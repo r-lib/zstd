@@ -7,13 +7,15 @@ Authors@R: c(
            comment = c(ROR = "03wc8by49")),
     person("Yann", "Collet", role = c("aut"), comment = "Zstandard author"),
     person("Meta Platforms, Inc. and affiliates.", role = "cph",
-           comment = "Zstandard copyright holder")
+           comment = "Zstandard copyright holder"),
+    person("rxi", role = c("aut", "cph"), comment = "microtar author")
   )
 Description: Zstandard compression and decompression.
 License: MIT + file LICENSE
 Copyright: This package includes code from the 'Zstandard' library
         owned by Meta Platforms, Inc. and affiliates. and created by
-        Yann Collet.  See file 'inst/COPYRIGHTS' for details.
+        Yann Collet, and code from the 'microtar' library created by
+        rxi.  See file 'inst/COPYRIGHTS' for details.
 URL: https://github.com/r-lib/zstd
 BugReports: https://github.com/r-lib/zstd/issues
 Encoding: UTF-8

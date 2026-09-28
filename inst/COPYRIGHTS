@@ -4,3 +4,14 @@ Zstandard C library
 The Zstandard library is Copyright (c) Meta Platforms, Inc. and affiliates. All rights reserved.
 
 See 'inst/LICENSE-zstd' for LICENSE for 'Zstandard'
+
+microtar C library
+-------------------
+
+'src/microtar.c' and 'src/microtar.h' are based on the 'microtar' library,
+Copyright (c) 2017 rxi, modified for this package to add ustar 'prefix'
+field support (for entry paths longer than 100 bytes) and bounds-checked
+name/linkname/numeric-field copies (upstream used unchecked strcpy() and
+sprintf()).
+
+See 'inst/LICENSE-microtar' for the LICENSE for 'microtar'

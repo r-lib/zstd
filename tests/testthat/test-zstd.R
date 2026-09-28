@@ -268,3 +268,128 @@ test_that("zstd_decompress() errors on corrupt/truncated input", {
   writeBin(truncated, cmp2)
   expect_error(zstd_decompress(cmp2, tempfile()))
 })
+
+test_that("zstd_tar_compress()/zstd_tar_decompress() round-trip a directory tree", {
+  dir <- tempfile()
+  dir.create(file.path(dir, "subdir"), recursive = TRUE)
+  writeLines("hello", file.path(dir, "a.txt"))
+  writeLines(paste(rep("world ", 1000), collapse = ""), file.path(dir, "subdir", "b.txt"))
+  file.create(file.path(dir, "empty.txt"))
+  on.exit(unlink(dir, recursive = TRUE))
+
+  archive <- tempfile(fileext = ".tar.zst")
+  exdir <- tempfile()
+  on.exit(unlink(c(archive, exdir), recursive = TRUE), add = TRUE)
+
+  expect_identical(zstd_tar_compress(dir, archive), archive)
+  expect_identical(zstd_tar_decompress(archive, exdir), exdir)
+
+  base <- basename(dir)
+  expect_identical(
+    readLines(file.path(exdir, base, "a.txt")),
+    readLines(file.path(dir, "a.txt"))
+  )
+  expect_identical(
+    readLines(file.path(exdir, base, "subdir", "b.txt")),
+    readLines(file.path(dir, "subdir", "b.txt"))
+  )
+  expect_true(file.exists(file.path(exdir, base, "empty.txt")))
+  expect_identical(file.size(file.path(exdir, base, "empty.txt")), 0)
+})
+
+test_that("zstd_tar_compress() supports relative paths longer than 100 bytes", {
+  dir <- tempfile()
+  comp <- paste(rep("a", 60), collapse = "")
+  nested <- file.path(comp, comp)
+  dir.create(file.path(dir, nested), recursive = TRUE)
+  writeLines("deep content", file.path(dir, nested, "f.txt"))
+  on.exit(unlink(dir, recursive = TRUE))
+
+  archive <- tempfile(fileext = ".tar.zst")
+  exdir <- tempfile()
+  on.exit(unlink(c(archive, exdir), recursive = TRUE), add = TRUE)
+
+  zstd_tar_compress(dir, archive)
+  zstd_tar_decompress(archive, exdir)
+
+  out <- file.path(exdir, basename(dir), nested, "f.txt")
+  expect_true(file.exists(out))
+  expect_identical(readLines(out), "deep content")
+})
+
+test_that("zstd_tar_compress() errors cleanly on paths that can't fit ustar headers", {
+  dir <- tempfile()
+  comp <- paste(rep("a", 60), collapse = "")
+  nested <- do.call(file.path, as.list(rep(comp, 5)))
+  dir.create(file.path(dir, dirname(nested)), recursive = TRUE)
+  writeLines("x", file.path(dir, nested))
+  on.exit(unlink(dir, recursive = TRUE))
+
+  archive <- tempfile(fileext = ".tar.zst")
+  on.exit(unlink(archive), add = TRUE)
+  expect_error(zstd_tar_compress(dir, archive))
+})
+
+test_that("zstd_tar_decompress() rejects a plain (non-tar) zstd file", {
+  plain <- tempfile()
+  writeLines("just some text, not a tar archive", plain)
+  on.exit(unlink(plain))
+
+  cmp <- tempfile(fileext = ".zst")
+  on.exit(unlink(cmp), add = TRUE)
+  zstd_compress(plain, cmp)
+
+  expect_error(zstd_tar_decompress(cmp, tempfile()))
+})
+
+test_that("zstd_tar_decompress() refuses path-traversal entries", {
+  make_tar_header <- function(name, size) {
+    h <- raw(512)
+    raw_name <- charToRaw(name)
+    h[seq_along(raw_name)] <- raw_name
+    set_field <- function(h, start, value) {
+      v <- charToRaw(value)
+      h[start:(start + length(v) - 1)] <- v
+      h
+    }
+    h <- set_field(h, 101, sprintf("%07o", 420))
+    h <- set_field(h, 109, sprintf("%07o", 0))
+    h <- set_field(h, 117, sprintf("%07o", 0))
+    h <- set_field(h, 125, sprintf("%011o", size))
+    h <- set_field(h, 137, sprintf("%011o", 0))
+    h[149:156] <- charToRaw("        ")
+    h[157] <- charToRaw("0")
+    h <- set_field(h, 258, "ustar")
+    h[264:265] <- charToRaw("00")
+    chk <- sum(as.integer(h))
+    h <- set_field(h, 149, sprintf("%06o", chk))
+    h[155] <- as.raw(0)
+    h[156] <- charToRaw(" ")
+    h
+  }
+
+  content <- charToRaw("evil content\n")
+  pad_len <- (512 - (length(content) %% 512)) %% 512
+  tar_path <- tempfile(fileext = ".tar")
+  on.exit(unlink(tar_path))
+  con <- file(tar_path, "wb")
+  writeBin(make_tar_header("../../evil.txt", length(content)), con)
+  writeBin(content, con)
+  if (pad_len > 0) writeBin(raw(pad_len), con)
+  writeBin(raw(1024), con)
+  close(con)
+
+  archive <- tempfile(fileext = ".tar.zst")
+  on.exit(unlink(archive), add = TRUE)
+  zstd_compress(tar_path, archive)
+
+  expect_error(zstd_tar_decompress(archive, tempfile()))
+})
+
+test_that("zstd_tar_compress()/zstd_tar_decompress() validate their arguments", {
+  expect_error(zstd_tar_compress(character(0), tempfile()))
+  expect_error(zstd_tar_compress(tempfile(), tempfile()))
+  expect_error(zstd_tar_compress(1L, tempfile()))
+
+  expect_error(zstd_tar_decompress(tempfile()))
+})

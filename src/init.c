@@ -20,6 +20,12 @@ SEXP zstd_compress_file_(
   SEXP content_size, SEXP dict_id, SEXP ldm
 );
 SEXP zstd_decompress_file_(SEXP input, SEXP output, SEXP dict);
+SEXP zstd_tar_compress_(
+  SEXP files, SEXP names, SEXP isdir, SEXP output, SEXP level, SEXP dict,
+  SEXP window_log, SEXP checksum, SEXP strategy, SEXP nb_workers,
+  SEXP content_size, SEXP dict_id, SEXP ldm
+);
+SEXP zstd_tar_decompress_(SEXP input, SEXP exdir, SEXP dict, SEXP tmp);
 
 static const R_CallMethodDef CallEntries[] = {
   {"zstd_mem_compress_",       (DL_FUNC) &zstd_mem_compress_,       10},
@@ -31,6 +37,8 @@ static const R_CallMethodDef CallEntries[] = {
   {"zstd_train_dict_",     (DL_FUNC) &zstd_train_dict_,     2},
   {"zstd_compress_file_",   (DL_FUNC) &zstd_compress_file_,   11},
   {"zstd_decompress_file_", (DL_FUNC) &zstd_decompress_file_, 3},
+  {"zstd_tar_compress_",    (DL_FUNC) &zstd_tar_compress_,    13},
+  {"zstd_tar_decompress_",  (DL_FUNC) &zstd_tar_decompress_,  4},
   {NULL, NULL, 0}
 };
 
