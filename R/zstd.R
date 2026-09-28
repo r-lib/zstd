@@ -427,8 +427,10 @@ zstd_tar_compress <- function(
       if (identical(base, ".")) {
         return(p)
       }
-      prefix <- paste0(base, "/")
-      ifelse(startsWith(p, prefix), substring(p, nchar(prefix) + 1), p)
+      base_len <- nchar(base)
+      is_prefixed <- substr(p, 1, base_len) == base &
+        substr(p, base_len + 1, base_len + 1) %in% c("/", "\\")
+      ifelse(is_prefixed, substring(p, base_len + 2), p)
     }
 
     paths <- c(paths, files[i])
