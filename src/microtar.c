@@ -190,7 +190,10 @@ static int raw_to_header(mtar_header_t *h, const mtar_raw_header_t *rh) {
     if (prefix_len + 1 + name_len + 1 > sizeof(h->name)) {
       return MTAR_ENAMETOOLONG;
     }
-    snprintf(h->name, sizeof(h->name), "%s/%s", prefix_buf, name_buf);
+    memcpy(h->name, prefix_buf, prefix_len);
+    h->name[prefix_len] = '/';
+    memcpy(h->name + prefix_len + 1, name_buf, name_len);
+    h->name[prefix_len + 1 + name_len] = '\0';
   } else {
     size_t name_len = strnlen(rh->name, sizeof(rh->name));
     if (name_len + 1 > sizeof(h->name)) {
