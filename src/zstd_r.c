@@ -1,10 +1,20 @@
 #define R_NO_REMAP
+#include <errno.h>
 #include <string.h>
 #include <R.h>
 #include <Rinternals.h>
 #define ZSTD_STATIC_LINKING_ONLY
 #include "zstd.h"
 #include "zdict.h"
+
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
 
 SEXP zstd_mem_compress_(SEXP x, SEXP level, SEXP dict) {
   if (TYPEOF(x) != RAWSXP) Rf_error("`x` must be a raw vector");
@@ -149,16 +159,126 @@ SEXP zstd_train_dict_(SEXP samples, SEXP buffer_capacity) {
   return res;
 }
 
-SEXP zstd_info_(SEXP x) {
-  if (TYPEOF(x) != RAWSXP) Rf_error("`x` must be a raw vector");
-  size_t size = (size_t) XLENGTH(x);
-  const char *src = (const char*) (size ? RAW(x) : NULL);
+typedef struct {
+  const char *data;
+  size_t size;
+#ifdef _WIN32
+  HANDLE hFile;
+  HANDLE hMap;
+#else
+  int fd;
+#endif
+} zstd_mmap_t;
+
+static void zstd_mmap_close(zstd_mmap_t *m) {
+#ifdef _WIN32
+  if (m->data != NULL) UnmapViewOfFile((LPCVOID) m->data);
+  if (m->hMap != NULL) CloseHandle(m->hMap);
+  if (m->hFile != INVALID_HANDLE_VALUE) CloseHandle(m->hFile);
+#else
+  if (m->data != NULL) munmap((void *) m->data, m->size);
+  if (m->fd >= 0) close(m->fd);
+#endif
+}
+
+#ifdef _WIN32
+static void zstd_mmap_open(const char *path, zstd_mmap_t *m) {
+  m->data = NULL;
+  m->size = 0;
+  m->hFile = INVALID_HANDLE_VALUE;
+  m->hMap = NULL;
+
+  int wlen = MultiByteToWideChar(CP_UTF8, 0, path, -1, NULL, 0);
+  if (wlen == 0) {
+    Rf_error("Cannot convert path '%s' to UTF-16", path);    // # nocov
+  }
+  wchar_t *wpath = (wchar_t *) R_alloc(wlen, sizeof(wchar_t));
+  MultiByteToWideChar(CP_UTF8, 0, path, -1, wpath, wlen);
+
+  m->hFile = CreateFileW(
+    wpath, GENERIC_READ, FILE_SHARE_READ, NULL,
+    OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL
+  );
+  if (m->hFile == INVALID_HANDLE_VALUE) {
+    Rf_error("Cannot open input file '%s' (error %lu)", path, GetLastError());
+  }
+
+  LARGE_INTEGER fsize;
+  if (!GetFileSizeEx(m->hFile, &fsize)) {
+    // # nocov start
+    zstd_mmap_close(m);
+    Rf_error("Cannot get size of input file '%s' (error %lu)", path, GetLastError());
+    // # nocov end
+  }
+  m->size = (size_t) fsize.QuadPart;
+
+  if (m->size > 0) {
+    m->hMap = CreateFileMappingW(m->hFile, NULL, PAGE_READONLY, 0, 0, NULL);
+    if (m->hMap == NULL) {
+      // # nocov start
+      zstd_mmap_close(m);
+      Rf_error("Cannot memory-map input file '%s' (error %lu)", path, GetLastError());
+      // # nocov end
+    }
+    m->data = (const char *) MapViewOfFile(m->hMap, FILE_MAP_READ, 0, 0, 0);
+    if (m->data == NULL) {
+      // # nocov start
+      zstd_mmap_close(m);
+      Rf_error("Cannot memory-map input file '%s' (error %lu)", path, GetLastError());
+      // # nocov end
+    }
+  }
+}
+#else
+static void zstd_mmap_open(const char *path, zstd_mmap_t *m) {
+  m->data = NULL;
+  m->size = 0;
+  m->fd = -1;
+
+  m->fd = open(path, O_RDONLY);
+  if (m->fd < 0) {
+    Rf_error("Cannot open input file '%s': %s", path, strerror(errno));
+  }
+
+  struct stat st;
+  if (fstat(m->fd, &st) != 0) {
+    // # nocov start
+    zstd_mmap_close(m);
+    Rf_error("Cannot stat input file '%s': %s", path, strerror(errno));
+    // # nocov end
+  }
+  m->size = (size_t) st.st_size;
+
+  if (m->size > 0) {
+    void *ptr = mmap(NULL, m->size, PROT_READ, MAP_PRIVATE, m->fd, 0);
+    if (ptr == MAP_FAILED) {
+      // # nocov start
+      zstd_mmap_close(m);
+      Rf_error("Cannot memory-map input file '%s': %s", path, strerror(errno));
+      // # nocov end
+    }
+    m->data = (const char *) ptr;
+  }
+}
+#endif
+
+SEXP zstd_info_(SEXP path) {
+  if (TYPEOF(path) != STRSXP || XLENGTH(path) != 1) {
+    Rf_error("`path` must be a string");    // # nocov
+  }
+  const char *filepath = Rf_translateCharUTF8(STRING_ELT(path, 0));
+
+  zstd_mmap_t m;
+  zstd_mmap_open(filepath, &m);
+  size_t size = m.size;
+  const char *src = m.data;
 
   size_t offset = 0;
   R_xlen_t n = 0;
   while (offset < size) {
     size_t frameSize = ZSTD_findFrameCompressedSize(src + offset, size - offset);
     if (ZSTD_isError(frameSize)) {
+      zstd_mmap_close(&m);
       Rf_error(
         "Invalid or corrupt zstd data at offset %.0f: %s",
         (double) offset, ZSTD_getErrorName(frameSize)
@@ -182,6 +302,7 @@ SEXP zstd_info_(SEXP x) {
     if (ZSTD_isError(hret)) {
       // # nocov start
       UNPROTECT(6);
+      zstd_mmap_close(&m);
       Rf_error(
         "Invalid or corrupt zstd frame header at offset %.0f: %s",
         (double) offset, ZSTD_getErrorName(hret)
@@ -191,6 +312,7 @@ SEXP zstd_info_(SEXP x) {
     if (hret != 0) {
       // # nocov start
       UNPROTECT(6);
+      zstd_mmap_close(&m);
       Rf_error("Truncated zstd frame header at offset %.0f", (double) offset);
       // # nocov end
     }
@@ -231,6 +353,7 @@ SEXP zstd_info_(SEXP x) {
   Rf_setAttrib(res, R_NamesSymbol, nm);
 
   UNPROTECT(8);
+  zstd_mmap_close(&m);
   return res;
 }
 

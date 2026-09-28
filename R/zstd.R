@@ -206,8 +206,7 @@ zstd_info <- function(path) {
     stop("No files match: ", path, call. = FALSE)
   }
   info <- lapply(files, function(file) {
-    bin <- readBin(file, "raw", file.size(file))
-    df <- as.data.frame(.Call(zstd_info_, bin), stringsAsFactors = FALSE)
+    df <- as.data.frame(.Call(zstd_info_, file), stringsAsFactors = FALSE)
     cbind(path = file, df, stringsAsFactors = FALSE)
   })
   do.call(rbind, info)
