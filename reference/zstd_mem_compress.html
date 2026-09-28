@@ -50,7 +50,18 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">zstd_mem_compress</span><span class="op">(</span><span class="va">x</span>, level <span class="op">=</span> <span class="fu"><a href="zstd_clevel.html">zstd_default_clevel</a></span><span class="op">(</span><span class="op">)</span>, dict <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">zstd_mem_compress</span><span class="op">(</span></span>
+<span>  <span class="va">x</span>,</span>
+<span>  level <span class="op">=</span> <span class="fu"><a href="zstd_clevel.html">zstd_default_clevel</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  dict <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  window_log <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  checksum <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  strategy <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  nb_workers <span class="op">=</span> <span class="fl">0L</span>,</span>
+<span>  content_size <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  dict_id <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  long_distance_matching <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -73,6 +84,49 @@ by <code><a href="zstd_train_dict.html">zstd_train_dict()</a></code>, or any raw
 dictionary can substantially improve the compression ratio of small,
 similar inputs. The same dictionary must be passed to
 <code><a href="zstd_mem_decompress.html">zstd_mem_decompress()</a></code>.</p></dd>
+
+
+<dt id="arg-window-log">window_log<a class="anchor" aria-label="anchor" href="#arg-window-log"></a></dt>
+<dd><p><code>NULL</code> (library default), or an integer setting the
+maximum back-reference distance as a power of two, in bytes. Larger
+values can improve the compression ratio of large, redundant inputs,
+at the cost of memory use on both the compression and decompression
+side.</p></dd>
+
+
+<dt id="arg-checksum">checksum<a class="anchor" aria-label="anchor" href="#arg-checksum"></a></dt>
+<dd><p>Whether to store a checksum of the decompressed content
+in the frame. <code><a href="zstd_mem_decompress.html">zstd_mem_decompress()</a></code> and <code><a href="zstd_decompress.html">zstd_decompress()</a></code> always
+verify this checksum automatically when present, and error if it does
+not match.</p></dd>
+
+
+<dt id="arg-strategy">strategy<a class="anchor" aria-label="anchor" href="#arg-strategy"></a></dt>
+<dd><p><code>NULL</code> (library default for <code>level</code>), or one of
+<code>"fast"</code>, <code>"dfast"</code>, <code>"greedy"</code>, <code>"lazy"</code>, <code>"lazy2"</code>, <code>"btlazy2"</code>,
+<code>"btopt"</code>, <code>"btultra"</code>, <code>"btultra2"</code>, from fastest to strongest.</p></dd>
+
+
+<dt id="arg-nb-workers">nb_workers<a class="anchor" aria-label="anchor" href="#arg-nb-workers"></a></dt>
+<dd><p>Number of compression worker threads. <code>0</code> (the
+default) compresses on the calling thread. Higher values can speed up
+compression of large inputs at some cost to the compression ratio.</p></dd>
+
+
+<dt id="arg-content-size">content_size<a class="anchor" aria-label="anchor" href="#arg-content-size"></a></dt>
+<dd><p>Whether to store the decompressed size in the frame
+header, when known. Defaults to <code>TRUE</code>.</p></dd>
+
+
+<dt id="arg-dict-id">dict_id<a class="anchor" aria-label="anchor" href="#arg-dict-id"></a></dt>
+<dd><p>Whether to store the dictionary's ID in the frame header,
+when a dictionary is used. Defaults to <code>TRUE</code>.</p></dd>
+
+
+<dt id="arg-long-distance-matching">long_distance_matching<a class="anchor" aria-label="anchor" href="#arg-long-distance-matching"></a></dt>
+<dd><p><code>NULL</code> (library default), or <code>TRUE</code>/
+<code>FALSE</code> to force long distance matching on or off. Improves the
+compression ratio of large inputs with repetition far apart.</p></dd>
 
 </dl></div>
     <div id="value">
