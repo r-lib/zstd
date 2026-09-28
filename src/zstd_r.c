@@ -2,6 +2,7 @@
 #include <string.h>
 #include <R.h>
 #include <Rinternals.h>
+#define ZSTD_STATIC_LINKING_ONLY
 #include "zstd.h"
 
 SEXP zstd_compress_(SEXP x, SEXP level) {
@@ -69,6 +70,91 @@ SEXP zstd_decompress_(SEXP x) {
 
   UNPROTECT(1);
   return out;
+}
+
+SEXP zstd_info_(SEXP x) {
+  if (TYPEOF(x) != RAWSXP) Rf_error("`x` must be a raw vector");
+  size_t size = (size_t) XLENGTH(x);
+  const char *src = (const char*) (size ? RAW(x) : NULL);
+
+  size_t offset = 0;
+  R_xlen_t n = 0;
+  while (offset < size) {
+    size_t frameSize = ZSTD_findFrameCompressedSize(src + offset, size - offset);
+    if (ZSTD_isError(frameSize)) {
+      Rf_error(
+        "Invalid or corrupt zstd data at offset %.0f: %s",
+        (double) offset, ZSTD_getErrorName(frameSize)
+      );
+    }
+    offset += frameSize;
+    n++;
+  }
+
+  SEXP type            = PROTECT(Rf_allocVector(STRSXP,  n));
+  SEXP compressed_size = PROTECT(Rf_allocVector(REALSXP, n));
+  SEXP content_size    = PROTECT(Rf_allocVector(REALSXP, n));
+  SEXP window_size     = PROTECT(Rf_allocVector(REALSXP, n));
+  SEXP dict_id         = PROTECT(Rf_allocVector(INTSXP,  n));
+  SEXP checksum        = PROTECT(Rf_allocVector(LGLSXP,  n));
+
+  offset = 0;
+  for (R_xlen_t i = 0; i < n; i++) {
+    ZSTD_FrameHeader fh;
+    size_t hret = ZSTD_getFrameHeader(&fh, src + offset, size - offset);
+    if (ZSTD_isError(hret)) {
+      // # nocov start
+      UNPROTECT(6);
+      Rf_error(
+        "Invalid or corrupt zstd frame header at offset %.0f: %s",
+        (double) offset, ZSTD_getErrorName(hret)
+      );
+      // # nocov end
+    }
+    if (hret != 0) {
+      // # nocov start
+      UNPROTECT(6);
+      Rf_error("Truncated zstd frame header at offset %.0f", (double) offset);
+      // # nocov end
+    }
+
+    size_t frameSize = ZSTD_findFrameCompressedSize(src + offset, size - offset);
+
+    if (fh.frameType == ZSTD_skippableFrame) {
+      SET_STRING_ELT(type, i, Rf_mkChar("skippable"));
+      REAL(content_size)[i] = NA_REAL;
+      REAL(window_size)[i] = NA_REAL;
+      INTEGER(dict_id)[i] = NA_INTEGER;
+      LOGICAL(checksum)[i] = NA_LOGICAL;
+    } else {
+      SET_STRING_ELT(type, i, Rf_mkChar("frame"));
+      REAL(content_size)[i] = fh.frameContentSize == ZSTD_CONTENTSIZE_UNKNOWN ?
+        NA_REAL : (double) fh.frameContentSize;
+      REAL(window_size)[i] = (double) fh.windowSize;
+      INTEGER(dict_id)[i] = (int) fh.dictID;
+      LOGICAL(checksum)[i] = fh.checksumFlag ? TRUE : FALSE;
+    }
+    REAL(compressed_size)[i] = (double) frameSize;
+
+    offset += frameSize;
+  }
+
+  const char *names[] = {
+    "type", "compressed_size", "content_size", "window_size", "dict_id", "checksum"
+  };
+  SEXP res = PROTECT(Rf_allocVector(VECSXP, 6));
+  SET_VECTOR_ELT(res, 0, type);
+  SET_VECTOR_ELT(res, 1, compressed_size);
+  SET_VECTOR_ELT(res, 2, content_size);
+  SET_VECTOR_ELT(res, 3, window_size);
+  SET_VECTOR_ELT(res, 4, dict_id);
+  SET_VECTOR_ELT(res, 5, checksum);
+  SEXP nm = PROTECT(Rf_allocVector(STRSXP, 6));
+  for (int i = 0; i < 6; i++) SET_STRING_ELT(nm, i, Rf_mkChar(names[i]));
+  Rf_setAttrib(res, R_NamesSymbol, nm);
+
+  UNPROTECT(8);
+  return res;
 }
 
 SEXP zstd_min_clevel_(void) {

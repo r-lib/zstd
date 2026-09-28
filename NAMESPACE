@@ -3,6 +3,7 @@
 export(zstd_compress)
 export(zstd_decompress)
 export(zstd_default_clevel)
+export(zstd_info)
 export(zstd_max_clevel)
 export(zstd_min_clevel)
 useDynLib(zstd, .registration = TRUE)

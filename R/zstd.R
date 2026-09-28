@@ -40,6 +40,43 @@ zstd_decompress <- function(x) {
   .Call(zstd_decompress_, x)
 }
 
+#' Get information about a Zstandard-compressed file
+#'
+#' Reads the frame headers of a zstd file without decompressing its
+#' content. Handles concatenated files (multiple zstd frames stored
+#' back to back, e.g. produced by appending compressed chunks to an
+#' existing file), returning one row per frame in the order they
+#' appear in the file.
+#'
+#' @param path Path to a zstd-compressed file.
+#' @return A data frame with one row per frame, and columns:
+#'   * `type`: `"frame"` for a regular zstd frame, `"skippable"` for a
+#'     skippable frame.
+#'   * `compressed_size`: size of the frame on disk, in bytes.
+#'   * `content_size`: decompressed size of the frame, in bytes, or `NA`
+#'     if unknown (streaming frames) or the frame is skippable.
+#'   * `window_size`: the decompression window size needed, in bytes, or
+#'     `NA` for skippable frames.
+#'   * `dict_id`: the dictionary ID used to compress the frame, or `NA`
+#'     if none was used or the frame is skippable.
+#'   * `checksum`: whether the frame includes a content checksum, or `NA`
+#'     for skippable frames.
+#' @export
+#' @examples
+#' tmp <- tempfile()
+#' writeBin(zstd_compress(charToRaw("hello world")), tmp)
+#' zstd_info(tmp)
+zstd_info <- function(path) {
+  if (!is.character(path) || length(path) != 1 || is.na(path)) {
+    stop("`path` must be a single string", call. = FALSE)
+  }
+  if (!file.exists(path)) {
+    stop("File does not exist: ", path, call. = FALSE)
+  }
+  bin <- readBin(path, "raw", file.size(path))
+  as.data.frame(.Call(zstd_info_, bin), stringsAsFactors = FALSE)
+}
+
 #' Zstandard compression level bounds
 #'
 #' @return An integer scalar.
