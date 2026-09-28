@@ -24,6 +24,13 @@ Decompresses \code{input} to a temporary file and extracts it, using the
 streaming API for the decompression step, so memory use for that step
 stays bounded regardless of the total size of the archive.
 }
+\details{
+Only plain ustar-format entries are supported (as written by
+\code{\link[=zstd_tar_compress]{zstd_tar_compress()}}, with paths up to about 254 bytes). Archives
+created by other tools that use GNU long name/link headers or PAX
+extended headers (typically for even longer paths) are not supported,
+and raise an error rather than being extracted incorrectly.
+}
 \examples{
 dir <- tempfile()
 dir.create(dir)

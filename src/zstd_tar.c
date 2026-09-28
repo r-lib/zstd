@@ -396,6 +396,22 @@ SEXP zstd_tar_decompress_(SEXP input, SEXP exdir, SEXP dict, SEXP tmp) {
 
   mtar_header_t h;
   while ((err = mtar_read_header(&tar, &h)) == MTAR_ESUCCESS) {
+    /* 'x'/'g' are PAX extended (per-file/global) headers, 'L'/'K' are GNU
+     * long-name/long-linkname headers. This package only understands
+     * plain ustar headers (with the 'prefix' field for names up to
+     * ~254 bytes); silently continuing would misread the entry that
+     * follows (its real name is stored in this header's *data*, not in
+     * the 'name' field microtar decoded). Fail clearly instead. */
+    if (h.type == 'x' || h.type == 'g' || h.type == 'L' || h.type == 'K') {
+      mtar_close(&tar);
+      Rf_error(
+        "This tar archive uses an extended header (type '%c') not "
+        "supported by this package, such as a GNU long name/link or a "
+        "PAX extended attribute; cannot extract it safely.",
+        h.type
+      );
+    }
+
     if (path_is_unsafe(h.name)) {
       mtar_close(&tar);
       Rf_error("Refusing to extract unsafe path from tar archive: '%s'", h.name);

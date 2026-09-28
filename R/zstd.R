@@ -477,6 +477,12 @@ zstd_tar_compress <- function(
 #' streaming API for the decompression step, so memory use for that step
 #' stays bounded regardless of the total size of the archive.
 #'
+#' Only plain ustar-format entries are supported (as written by
+#' [zstd_tar_compress()], with paths up to about 254 bytes). Archives
+#' created by other tools that use GNU long name/link headers or PAX
+#' extended headers (typically for even longer paths) are not supported,
+#' and raise an error rather than being extracted incorrectly.
+#'
 #' @param input Path to a `.tar.zst` file, as created by
 #'   [zstd_tar_compress()].
 #' @param exdir Directory to extract files into. Created if it doesn't

@@ -386,6 +386,54 @@ test_that("zstd_tar_decompress() refuses path-traversal entries", {
   expect_error(zstd_tar_decompress(archive, tempfile()))
 })
 
+test_that("zstd_tar_decompress() refuses PAX/GNU extended headers instead of misreading them", {
+  make_tar_header <- function(name, size, type = "0") {
+    h <- raw(512)
+    raw_name <- charToRaw(name)
+    h[seq_along(raw_name)] <- raw_name
+    set_field <- function(h, start, value) {
+      v <- charToRaw(value)
+      h[start:(start + length(v) - 1)] <- v
+      h
+    }
+    h <- set_field(h, 101, sprintf("%07o", 420))
+    h <- set_field(h, 109, sprintf("%07o", 0))
+    h <- set_field(h, 117, sprintf("%07o", 0))
+    h <- set_field(h, 125, sprintf("%011o", size))
+    h <- set_field(h, 137, sprintf("%011o", 0))
+    h[149:156] <- charToRaw("        ")
+    h <- set_field(h, 157, type)
+    h <- set_field(h, 258, "ustar")
+    h[264:265] <- charToRaw("00")
+    chk <- sum(as.integer(h))
+    h <- set_field(h, 149, sprintf("%06o", chk))
+    h[155] <- as.raw(0)
+    h[156] <- charToRaw(" ")
+    h
+  }
+
+  # A 'x' typeflag marks a PAX extended header: its "data" is a series of
+  # key=value attributes (here, the real long path of the entry that
+  # follows), not file content. A reader that doesn't understand this
+  # would treat 'PaxHeader/entry' as a literal (and bogus) file name.
+  content <- charToRaw("21 path=some/long/path\n")
+  pad_len <- (512 - (length(content) %% 512)) %% 512
+  tar_path <- tempfile(fileext = ".tar")
+  on.exit(unlink(tar_path))
+  con <- file(tar_path, "wb")
+  writeBin(make_tar_header("PaxHeader/entry", length(content), type = "x"), con)
+  writeBin(content, con)
+  if (pad_len > 0) writeBin(raw(pad_len), con)
+  writeBin(raw(1024), con)
+  close(con)
+
+  archive <- tempfile(fileext = ".tar.zst")
+  on.exit(unlink(archive), add = TRUE)
+  zstd_compress(tar_path, archive)
+
+  expect_error(zstd_tar_decompress(archive, tempfile()))
+})
+
 test_that("zstd_tar_compress()/zstd_tar_decompress() validate their arguments", {
   expect_error(zstd_tar_compress(character(0), tempfile()))
   expect_error(zstd_tar_compress(tempfile(), tempfile()))
