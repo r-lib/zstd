@@ -10,6 +10,8 @@ SEXP zstd_min_clevel_(void);
 SEXP zstd_max_clevel_(void);
 SEXP zstd_default_clevel_(void);
 SEXP zstd_train_dict_(SEXP samples, SEXP buffer_capacity);
+SEXP zstd_compress_file_(SEXP input, SEXP output, SEXP level, SEXP dict);
+SEXP zstd_decompress_file_(SEXP input, SEXP output, SEXP dict);
 
 static const R_CallMethodDef CallEntries[] = {
   {"zstd_mem_compress_",       (DL_FUNC) &zstd_mem_compress_,       3},
@@ -19,6 +21,8 @@ static const R_CallMethodDef CallEntries[] = {
   {"zstd_max_clevel_",     (DL_FUNC) &zstd_max_clevel_,     0},
   {"zstd_default_clevel_", (DL_FUNC) &zstd_default_clevel_, 0},
   {"zstd_train_dict_",     (DL_FUNC) &zstd_train_dict_,     2},
+  {"zstd_compress_file_",   (DL_FUNC) &zstd_compress_file_,   4},
+  {"zstd_decompress_file_", (DL_FUNC) &zstd_decompress_file_, 3},
   {NULL, NULL, 0}
 };
 
