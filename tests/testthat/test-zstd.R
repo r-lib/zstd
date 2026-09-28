@@ -2,7 +2,7 @@ test_that("round-trip works for various inputs", {
   cases <- list(
     empty = raw(0),
     small = charToRaw("hello world"),
-    text  = charToRaw(paste(rep("the quick brown fox ", 500), collapse = "")),
+    text = charToRaw(paste(rep("the quick brown fox ", 500), collapse = "")),
     random = as.raw(sample(0:255, 10000, replace = TRUE))
   )
   for (x in cases) {
@@ -15,7 +15,7 @@ test_that("round-trip works for various inputs", {
 test_that("compression level affects output and is validated", {
   x <- charToRaw(paste(rep("abcabcabc", 1000), collapse = ""))
   small <- zstd_mem_compress(x, level = zstd_min_clevel())
-  big   <- zstd_mem_compress(x, level = zstd_max_clevel())
+  big <- zstd_mem_compress(x, level = zstd_max_clevel())
   expect_identical(zstd_mem_decompress(small), x)
   expect_identical(zstd_mem_decompress(big), x)
 
@@ -84,7 +84,10 @@ test_that("zstd_info() handles concatenated (multi-frame) files", {
   info <- zstd_info(tmp)
   expect_equal(nrow(info), 2)
   expect_identical(info$type, c("frame", "frame"))
-  expect_identical(info$compressed_size, as.double(c(length(cmp1), length(cmp2))))
+  expect_identical(
+    info$compressed_size,
+    as.double(c(length(cmp1), length(cmp2)))
+  )
   expect_identical(info$content_size, as.double(c(length(x1), length(x2))))
   expect_equal(sum(info$compressed_size), file.size(tmp))
 })

@@ -1,8 +1,15 @@
 #' Zstandard compression strategies, from fastest to strongest
 #' @noRd
 zstd_strategies <- c(
-  "fast", "dfast", "greedy", "lazy", "lazy2",
-  "btlazy2", "btopt", "btultra", "btultra2"
+  "fast",
+  "dfast",
+  "greedy",
+  "lazy",
+  "lazy2",
+  "btlazy2",
+  "btopt",
+  "btultra",
+  "btultra2"
 )
 
 #' Convert a strategy name to the integer zstd expects
@@ -29,8 +36,15 @@ zstd_strategy_int <- function(strategy) {
 #' Validate the common advanced compression options shared by
 #' [zstd_mem_compress()] and [zstd_compress()]
 #' @noRd
-zstd_check_common_cparams <- function(window_log, checksum, strategy, nb_workers,
-                                       content_size, dict_id, long_distance_matching) {
+zstd_check_common_cparams <- function(
+  window_log,
+  checksum,
+  strategy,
+  nb_workers,
+  content_size,
+  dict_id,
+  long_distance_matching
+) {
   if (!is.null(window_log)) {
     window_log <- as.integer(window_log)
     if (is.na(window_log)) {
@@ -47,16 +61,26 @@ zstd_check_common_cparams <- function(window_log, checksum, strategy, nb_workers
       stop("`nb_workers` must be a non-negative integer", call. = FALSE)
     }
   }
-  if (!is.logical(content_size) || length(content_size) != 1 || is.na(content_size)) {
+  if (
+    !is.logical(content_size) ||
+      length(content_size) != 1 ||
+      is.na(content_size)
+  ) {
     stop("`content_size` must be `TRUE` or `FALSE`", call. = FALSE)
   }
   if (!is.logical(dict_id) || length(dict_id) != 1 || is.na(dict_id)) {
     stop("`dict_id` must be `TRUE` or `FALSE`", call. = FALSE)
   }
-  if (!is.null(long_distance_matching) &&
-      (!is.logical(long_distance_matching) || length(long_distance_matching) != 1 ||
-       is.na(long_distance_matching))) {
-    stop("`long_distance_matching` must be `TRUE`, `FALSE`, or NULL", call. = FALSE)
+  if (
+    !is.null(long_distance_matching) &&
+      (!is.logical(long_distance_matching) ||
+        length(long_distance_matching) != 1 ||
+        is.na(long_distance_matching))
+  ) {
+    stop(
+      "`long_distance_matching` must be `TRUE`, `FALSE`, or NULL",
+      call. = FALSE
+    )
   }
   list(
     window_log = window_log,
@@ -108,10 +132,18 @@ zstd_check_common_cparams <- function(window_log, checksum, strategy, nb_workers
 #' x <- charToRaw(paste(rep("hello world ", 1000), collapse = ""))
 #' cmp <- zstd_mem_compress(x)
 #' identical(zstd_mem_decompress(cmp), x)
-zstd_mem_compress <- function(x, level = zstd_default_clevel(), dict = NULL,
-                               window_log = NULL, checksum = FALSE, strategy = NULL,
-                               nb_workers = 0L, content_size = TRUE, dict_id = TRUE,
-                               long_distance_matching = NULL) {
+zstd_mem_compress <- function(
+  x,
+  level = zstd_default_clevel(),
+  dict = NULL,
+  window_log = NULL,
+  checksum = FALSE,
+  strategy = NULL,
+  nb_workers = 0L,
+  content_size = TRUE,
+  dict_id = TRUE,
+  long_distance_matching = NULL
+) {
   if (!is.raw(x)) {
     stop("`x` must be a raw vector", call. = FALSE)
   }
@@ -121,19 +153,34 @@ zstd_mem_compress <- function(x, level = zstd_default_clevel(), dict = NULL,
   level <- as.integer(level)
   if (level < zstd_min_clevel() || level > zstd_max_clevel()) {
     stop(
-      "`level` must be between ", zstd_min_clevel(), " and ",
+      "`level` must be between ",
+      zstd_min_clevel(),
+      " and ",
       zstd_max_clevel(),
       call. = FALSE
     )
   }
   p <- zstd_check_common_cparams(
-    window_log, checksum, strategy, nb_workers, content_size, dict_id,
+    window_log,
+    checksum,
+    strategy,
+    nb_workers,
+    content_size,
+    dict_id,
     long_distance_matching
   )
   .Call(
-    zstd_mem_compress_, x, level, dict,
-    p$window_log, p$checksum, p$strategy, p$nb_workers,
-    p$content_size, p$dict_id, p$ldm
+    zstd_mem_compress_,
+    x,
+    level,
+    dict,
+    p$window_log,
+    p$checksum,
+    p$strategy,
+    p$nb_workers,
+    p$content_size,
+    p$dict_id,
+    p$ldm
   )
 }
 
@@ -185,10 +232,19 @@ zstd_mem_decompress <- function(x, dict = NULL) {
 #' zstd_compress(src, dst)
 #' zstd_decompress(dst, src2 <- tempfile())
 #' identical(readBin(src, "raw", file.size(src)), readBin(src2, "raw", file.size(src2)))
-zstd_compress <- function(input, output, level = zstd_default_clevel(), dict = NULL,
-                           window_log = NULL, checksum = FALSE, strategy = NULL,
-                           nb_workers = 0L, content_size = TRUE, dict_id = TRUE,
-                           long_distance_matching = NULL) {
+zstd_compress <- function(
+  input,
+  output,
+  level = zstd_default_clevel(),
+  dict = NULL,
+  window_log = NULL,
+  checksum = FALSE,
+  strategy = NULL,
+  nb_workers = 0L,
+  content_size = TRUE,
+  dict_id = TRUE,
+  long_distance_matching = NULL
+) {
   if (!is.character(input) || length(input) != 1 || is.na(input)) {
     stop("`input` must be a single string", call. = FALSE)
   }
@@ -204,19 +260,35 @@ zstd_compress <- function(input, output, level = zstd_default_clevel(), dict = N
   level <- as.integer(level)
   if (level < zstd_min_clevel() || level > zstd_max_clevel()) {
     stop(
-      "`level` must be between ", zstd_min_clevel(), " and ",
+      "`level` must be between ",
+      zstd_min_clevel(),
+      " and ",
       zstd_max_clevel(),
       call. = FALSE
     )
   }
   p <- zstd_check_common_cparams(
-    window_log, checksum, strategy, nb_workers, content_size, dict_id,
+    window_log,
+    checksum,
+    strategy,
+    nb_workers,
+    content_size,
+    dict_id,
     long_distance_matching
   )
   .Call(
-    zstd_compress_file_, input, output, level, dict,
-    p$window_log, p$checksum, p$strategy, p$nb_workers,
-    p$content_size, p$dict_id, p$ldm
+    zstd_compress_file_,
+    input,
+    output,
+    level,
+    dict,
+    p$window_log,
+    p$checksum,
+    p$strategy,
+    p$nb_workers,
+    p$content_size,
+    p$dict_id,
+    p$ldm
   )
   invisible(output)
 }
