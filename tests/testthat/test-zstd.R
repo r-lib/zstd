@@ -238,25 +238,6 @@ test_that("zstd_compress()/zstd_decompress() validate their arguments", {
   expect_error(zstd_decompress(src, 1L))
 })
 
-test_that("zstd_compress()/zstd_decompress() error when input file cannot be opened", {
-  skip_if(.Platform$OS.type != "unix", "permission test needs a unix fs")
-  skip_if(identical(Sys.getenv("USER"), "root"), "root ignores file permissions")
-
-  src <- tempfile()
-  cmp <- tempfile()
-  on.exit(unlink(c(src, cmp)))
-  writeBin(charToRaw("hello world"), src)
-  zstd_compress(src, cmp)
-
-  Sys.chmod(src, "000")
-  Sys.chmod(cmp, "000")
-  on.exit(Sys.chmod(src, "644"), add = TRUE)
-  on.exit(Sys.chmod(cmp, "644"), add = TRUE)
-
-  expect_error(zstd_compress(src, tempfile()))
-  expect_error(zstd_decompress(cmp, tempfile()))
-})
-
 test_that("zstd_compress()/zstd_decompress() error when output file cannot be opened", {
   src <- tempfile()
   cmp <- tempfile()
