@@ -50,7 +50,7 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">zstd_decompress</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">zstd_decompress</span><span class="op">(</span><span class="va">x</span>, dict <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -59,6 +59,11 @@
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>A raw vector of Zstandard-compressed data (a single frame).</p></dd>
+
+
+<dt id="arg-dict">dict<a class="anchor" aria-label="anchor" href="#arg-dict"></a></dt>
+<dd><p><code>NULL</code>, or a raw vector containing the dictionary that was
+used to compress <code>x</code>. See <code><a href="zstd_compress.html">zstd_compress()</a></code>.</p></dd>
 
 </dl></div>
     <div id="value">

@@ -50,7 +50,7 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">zstd_compress</span><span class="op">(</span><span class="va">x</span>, level <span class="op">=</span> <span class="fu"><a href="zstd_clevel.html">zstd_default_clevel</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">zstd_compress</span><span class="op">(</span><span class="va">x</span>, level <span class="op">=</span> <span class="fu"><a href="zstd_clevel.html">zstd_default_clevel</a></span><span class="op">(</span><span class="op">)</span>, dict <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -65,6 +65,14 @@
 <dd><p>Integer compression level. Defaults to
 <code><a href="zstd_clevel.html">zstd_default_clevel()</a></code>. Valid range is <code><a href="zstd_clevel.html">zstd_min_clevel()</a></code> to
 <code><a href="zstd_clevel.html">zstd_max_clevel()</a></code>.</p></dd>
+
+
+<dt id="arg-dict">dict<a class="anchor" aria-label="anchor" href="#arg-dict"></a></dt>
+<dd><p><code>NULL</code>, or a raw vector containing a dictionary (as created
+by <code><a href="zstd_train_dict.html">zstd_train_dict()</a></code>, or any raw content dictionary). Using a
+dictionary can substantially improve the compression ratio of small,
+similar inputs. The same dictionary must be passed to
+<code><a href="zstd_decompress.html">zstd_decompress()</a></code>.</p></dd>
 
 </dl></div>
     <div id="value">
