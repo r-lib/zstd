@@ -20,7 +20,9 @@ used to compress \code{input}. See \code{\link[=zstd_compress]{zstd_compress()}}
 }
 \description{
 Uses the streaming API, so memory use stays bounded regardless of the
-size of \code{input}.
+size of \code{input}. If the frame carries a content checksum (see the
+\code{checksum} argument of \code{\link[=zstd_compress]{zstd_compress()}}), it is verified automatically;
+an error is raised if the checksum does not match.
 }
 \examples{
 src <- tempfile()

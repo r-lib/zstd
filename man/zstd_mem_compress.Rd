@@ -4,7 +4,18 @@
 \alias{zstd_mem_compress}
 \title{Compress a raw vector with Zstandard}
 \usage{
-zstd_mem_compress(x, level = zstd_default_clevel(), dict = NULL)
+zstd_mem_compress(
+  x,
+  level = zstd_default_clevel(),
+  dict = NULL,
+  window_log = NULL,
+  checksum = FALSE,
+  strategy = NULL,
+  nb_workers = 0L,
+  content_size = TRUE,
+  dict_id = TRUE,
+  long_distance_matching = NULL
+)
 }
 \arguments{
 \item{x}{A raw vector to compress.}
@@ -18,6 +29,35 @@ by \code{\link[=zstd_train_dict]{zstd_train_dict()}}, or any raw content diction
 dictionary can substantially improve the compression ratio of small,
 similar inputs. The same dictionary must be passed to
 \code{\link[=zstd_mem_decompress]{zstd_mem_decompress()}}.}
+
+\item{window_log}{\code{NULL} (library default), or an integer setting the
+maximum back-reference distance as a power of two, in bytes. Larger
+values can improve the compression ratio of large, redundant inputs,
+at the cost of memory use on both the compression and decompression
+side.}
+
+\item{checksum}{Whether to store a checksum of the decompressed content
+in the frame. \code{\link[=zstd_mem_decompress]{zstd_mem_decompress()}} and \code{\link[=zstd_decompress]{zstd_decompress()}} always
+verify this checksum automatically when present, and error if it does
+not match.}
+
+\item{strategy}{\code{NULL} (library default for \code{level}), or one of
+\code{"fast"}, \code{"dfast"}, \code{"greedy"}, \code{"lazy"}, \code{"lazy2"}, \code{"btlazy2"},
+\code{"btopt"}, \code{"btultra"}, \code{"btultra2"}, from fastest to strongest.}
+
+\item{nb_workers}{Number of compression worker threads. \code{0} (the
+default) compresses on the calling thread. Higher values can speed up
+compression of large inputs at some cost to the compression ratio.}
+
+\item{content_size}{Whether to store the decompressed size in the frame
+header, when known. Defaults to \code{TRUE}.}
+
+\item{dict_id}{Whether to store the dictionary's ID in the frame header,
+when a dictionary is used. Defaults to \code{TRUE}.}
+
+\item{long_distance_matching}{\code{NULL} (library default), or \code{TRUE}/
+\code{FALSE} to force long distance matching on or off. Improves the
+compression ratio of large inputs with repetition far apart.}
 }
 \value{
 A raw vector: the compressed data.

@@ -6,6 +6,7 @@
 #include <Rinternals.h>
 #define ZSTD_STATIC_LINKING_ONLY
 #include "zstd.h"
+#include "zstd_r.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -22,7 +23,11 @@ static FILE *zstd_fopen(const char *path_utf8, const char *mode) {
 #define zstd_fopen fopen
 #endif
 
-SEXP zstd_compress_file_(SEXP input, SEXP output, SEXP level, SEXP dict) {
+SEXP zstd_compress_file_(
+  SEXP input, SEXP output, SEXP level, SEXP dict,
+  SEXP window_log, SEXP checksum, SEXP strategy, SEXP nb_workers,
+  SEXP content_size, SEXP dict_id, SEXP ldm
+) {
   if (TYPEOF(input) != STRSXP) Rf_error("`input` must be a string");
   if (TYPEOF(output) != STRSXP) Rf_error("`output` must be a string");
   if (dict != R_NilValue && TYPEOF(dict) != RAWSXP) {
@@ -51,6 +56,7 @@ SEXP zstd_compress_file_(SEXP input, SEXP output, SEXP level, SEXP dict) {
     // # nocov end
   }
   ZSTD_CCtx_setParameter(cctx, ZSTD_c_compressionLevel, lvl);
+  zstd_set_common_cparams(cctx, window_log, checksum, strategy, nb_workers, content_size, dict_id, ldm);
   if (dict != R_NilValue) {
     size_t dictSize = (size_t) XLENGTH(dict);
     size_t dret = ZSTD_CCtx_loadDictionary(

@@ -1,3 +1,74 @@
+#' Zstandard compression strategies, from fastest to strongest
+#' @noRd
+zstd_strategies <- c(
+  "fast", "dfast", "greedy", "lazy", "lazy2",
+  "btlazy2", "btopt", "btultra", "btultra2"
+)
+
+#' Convert a strategy name to the integer zstd expects
+#' @noRd
+zstd_strategy_int <- function(strategy) {
+  if (is.null(strategy)) {
+    return(NULL)
+  }
+  if (!is.character(strategy) || length(strategy) != 1 || is.na(strategy)) {
+    stop("`strategy` must be a single string or NULL", call. = FALSE)
+  }
+  idx <- match(strategy, zstd_strategies)
+  if (is.na(idx)) {
+    stop(
+      "`strategy` must be one of ",
+      paste(paste0('"', zstd_strategies, '"'), collapse = ", "),
+      ", or NULL",
+      call. = FALSE
+    )
+  }
+  idx
+}
+
+#' Validate the common advanced compression options shared by
+#' [zstd_mem_compress()] and [zstd_compress()]
+#' @noRd
+zstd_check_common_cparams <- function(window_log, checksum, strategy, nb_workers,
+                                       content_size, dict_id, long_distance_matching) {
+  if (!is.null(window_log)) {
+    window_log <- as.integer(window_log)
+    if (is.na(window_log)) {
+      stop("`window_log` must be an integer or NULL", call. = FALSE)
+    }
+  }
+  if (!is.logical(checksum) || length(checksum) != 1 || is.na(checksum)) {
+    stop("`checksum` must be `TRUE` or `FALSE`", call. = FALSE)
+  }
+  strategy <- zstd_strategy_int(strategy)
+  if (!is.null(nb_workers)) {
+    nb_workers <- as.integer(nb_workers)
+    if (is.na(nb_workers) || nb_workers < 0) {
+      stop("`nb_workers` must be a non-negative integer", call. = FALSE)
+    }
+  }
+  if (!is.logical(content_size) || length(content_size) != 1 || is.na(content_size)) {
+    stop("`content_size` must be `TRUE` or `FALSE`", call. = FALSE)
+  }
+  if (!is.logical(dict_id) || length(dict_id) != 1 || is.na(dict_id)) {
+    stop("`dict_id` must be `TRUE` or `FALSE`", call. = FALSE)
+  }
+  if (!is.null(long_distance_matching) &&
+      (!is.logical(long_distance_matching) || length(long_distance_matching) != 1 ||
+       is.na(long_distance_matching))) {
+    stop("`long_distance_matching` must be `TRUE`, `FALSE`, or NULL", call. = FALSE)
+  }
+  list(
+    window_log = window_log,
+    checksum = checksum,
+    strategy = strategy,
+    nb_workers = nb_workers,
+    content_size = content_size,
+    dict_id = dict_id,
+    ldm = long_distance_matching
+  )
+}
+
 #' Compress a raw vector with Zstandard
 #'
 #' @param x A raw vector to compress.
@@ -9,13 +80,38 @@
 #'   dictionary can substantially improve the compression ratio of small,
 #'   similar inputs. The same dictionary must be passed to
 #'   [zstd_mem_decompress()].
+#' @param window_log `NULL` (library default), or an integer setting the
+#'   maximum back-reference distance as a power of two, in bytes. Larger
+#'   values can improve the compression ratio of large, redundant inputs,
+#'   at the cost of memory use on both the compression and decompression
+#'   side.
+#' @param checksum Whether to store a checksum of the decompressed content
+#'   in the frame. [zstd_mem_decompress()] and [zstd_decompress()] always
+#'   verify this checksum automatically when present, and error if it does
+#'   not match.
+#' @param strategy `NULL` (library default for `level`), or one of
+#'   `"fast"`, `"dfast"`, `"greedy"`, `"lazy"`, `"lazy2"`, `"btlazy2"`,
+#'   `"btopt"`, `"btultra"`, `"btultra2"`, from fastest to strongest.
+#' @param nb_workers Number of compression worker threads. `0` (the
+#'   default) compresses on the calling thread. Higher values can speed up
+#'   compression of large inputs at some cost to the compression ratio.
+#' @param content_size Whether to store the decompressed size in the frame
+#'   header, when known. Defaults to `TRUE`.
+#' @param dict_id Whether to store the dictionary's ID in the frame header,
+#'   when a dictionary is used. Defaults to `TRUE`.
+#' @param long_distance_matching `NULL` (library default), or `TRUE`/
+#'   `FALSE` to force long distance matching on or off. Improves the
+#'   compression ratio of large inputs with repetition far apart.
 #' @return A raw vector: the compressed data.
 #' @export
 #' @examples
 #' x <- charToRaw(paste(rep("hello world ", 1000), collapse = ""))
 #' cmp <- zstd_mem_compress(x)
 #' identical(zstd_mem_decompress(cmp), x)
-zstd_mem_compress <- function(x, level = zstd_default_clevel(), dict = NULL) {
+zstd_mem_compress <- function(x, level = zstd_default_clevel(), dict = NULL,
+                               window_log = NULL, checksum = FALSE, strategy = NULL,
+                               nb_workers = 0L, content_size = TRUE, dict_id = TRUE,
+                               long_distance_matching = NULL) {
   if (!is.raw(x)) {
     stop("`x` must be a raw vector", call. = FALSE)
   }
@@ -30,10 +126,22 @@ zstd_mem_compress <- function(x, level = zstd_default_clevel(), dict = NULL) {
       call. = FALSE
     )
   }
-  .Call(zstd_mem_compress_, x, level, dict)
+  p <- zstd_check_common_cparams(
+    window_log, checksum, strategy, nb_workers, content_size, dict_id,
+    long_distance_matching
+  )
+  .Call(
+    zstd_mem_compress_, x, level, dict,
+    p$window_log, p$checksum, p$strategy, p$nb_workers,
+    p$content_size, p$dict_id, p$ldm
+  )
 }
 
 #' Decompress a Zstandard-compressed raw vector
+#'
+#' If the frame carries a content checksum (see the `checksum` argument of
+#' [zstd_mem_compress()]), it is verified automatically; an error is raised
+#' if the checksum does not match.
 #'
 #' @param x A raw vector of Zstandard-compressed data (a single frame).
 #' @param dict `NULL`, or a raw vector containing the dictionary that was
@@ -67,6 +175,7 @@ zstd_mem_decompress <- function(x, dict = NULL) {
 #' @param dict `NULL`, or a raw vector containing a dictionary (as created
 #'   by [zstd_train_dict()], or any raw content dictionary). The same
 #'   dictionary must be passed to [zstd_decompress()].
+#' @inheritParams zstd_mem_compress
 #' @return `output`, invisibly.
 #' @export
 #' @examples
@@ -76,7 +185,10 @@ zstd_mem_decompress <- function(x, dict = NULL) {
 #' zstd_compress(src, dst)
 #' zstd_decompress(dst, src2 <- tempfile())
 #' identical(readBin(src, "raw", file.size(src)), readBin(src2, "raw", file.size(src2)))
-zstd_compress <- function(input, output, level = zstd_default_clevel(), dict = NULL) {
+zstd_compress <- function(input, output, level = zstd_default_clevel(), dict = NULL,
+                           window_log = NULL, checksum = FALSE, strategy = NULL,
+                           nb_workers = 0L, content_size = TRUE, dict_id = TRUE,
+                           long_distance_matching = NULL) {
   if (!is.character(input) || length(input) != 1 || is.na(input)) {
     stop("`input` must be a single string", call. = FALSE)
   }
@@ -97,14 +209,24 @@ zstd_compress <- function(input, output, level = zstd_default_clevel(), dict = N
       call. = FALSE
     )
   }
-  .Call(zstd_compress_file_, input, output, level, dict)
+  p <- zstd_check_common_cparams(
+    window_log, checksum, strategy, nb_workers, content_size, dict_id,
+    long_distance_matching
+  )
+  .Call(
+    zstd_compress_file_, input, output, level, dict,
+    p$window_log, p$checksum, p$strategy, p$nb_workers,
+    p$content_size, p$dict_id, p$ldm
+  )
   invisible(output)
 }
 
 #' Decompress a Zstandard-compressed file
 #'
 #' Uses the streaming API, so memory use stays bounded regardless of the
-#' size of `input`.
+#' size of `input`. If the frame carries a content checksum (see the
+#' `checksum` argument of [zstd_compress()]), it is verified automatically;
+#' an error is raised if the checksum does not match.
 #'
 #' @param input Path to a Zstandard-compressed file.
 #' @param output Path of the decompressed file to create. Overwritten if it

@@ -6,6 +6,7 @@
 #define ZSTD_STATIC_LINKING_ONLY
 #include "zstd.h"
 #include "zdict.h"
+#include "zstd_r.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -16,7 +17,52 @@
 #include <unistd.h>
 #endif
 
-SEXP zstd_mem_compress_(SEXP x, SEXP level, SEXP dict) {
+void zstd_set_common_cparams(
+  ZSTD_CCtx *cctx,
+  SEXP window_log,
+  SEXP checksum,
+  SEXP strategy,
+  SEXP nb_workers,
+  SEXP content_size,
+  SEXP dict_id,
+  SEXP ldm
+) {
+  size_t ret;
+  if (window_log != R_NilValue) {
+    ret = ZSTD_CCtx_setParameter(cctx, ZSTD_c_windowLog, Rf_asInteger(window_log));
+    if (ZSTD_isError(ret)) Rf_error("zstd error setting window_log: %s", ZSTD_getErrorName(ret));
+  }
+  if (checksum != R_NilValue) {
+    ret = ZSTD_CCtx_setParameter(cctx, ZSTD_c_checksumFlag, Rf_asLogical(checksum) ? 1 : 0);
+    if (ZSTD_isError(ret)) Rf_error("zstd error setting checksum: %s", ZSTD_getErrorName(ret));    // # nocov
+  }
+  if (strategy != R_NilValue) {
+    ret = ZSTD_CCtx_setParameter(cctx, ZSTD_c_strategy, Rf_asInteger(strategy));
+    if (ZSTD_isError(ret)) Rf_error("zstd error setting strategy: %s", ZSTD_getErrorName(ret));
+  }
+  if (nb_workers != R_NilValue) {
+    ret = ZSTD_CCtx_setParameter(cctx, ZSTD_c_nbWorkers, Rf_asInteger(nb_workers));
+    if (ZSTD_isError(ret)) Rf_error("zstd error setting nb_workers: %s", ZSTD_getErrorName(ret));    // # nocov
+  }
+  if (content_size != R_NilValue) {
+    ret = ZSTD_CCtx_setParameter(cctx, ZSTD_c_contentSizeFlag, Rf_asLogical(content_size) ? 1 : 0);
+    if (ZSTD_isError(ret)) Rf_error("zstd error setting content_size: %s", ZSTD_getErrorName(ret));    // # nocov
+  }
+  if (dict_id != R_NilValue) {
+    ret = ZSTD_CCtx_setParameter(cctx, ZSTD_c_dictIDFlag, Rf_asLogical(dict_id) ? 1 : 0);
+    if (ZSTD_isError(ret)) Rf_error("zstd error setting dict_id: %s", ZSTD_getErrorName(ret));    // # nocov
+  }
+  if (ldm != R_NilValue) {
+    ret = ZSTD_CCtx_setParameter(cctx, ZSTD_c_enableLongDistanceMatching, Rf_asLogical(ldm) ? 1 : 0);
+    if (ZSTD_isError(ret)) Rf_error("zstd error setting long_distance_matching: %s", ZSTD_getErrorName(ret));    // # nocov
+  }
+}
+
+SEXP zstd_mem_compress_(
+  SEXP x, SEXP level, SEXP dict,
+  SEXP window_log, SEXP checksum, SEXP strategy, SEXP nb_workers,
+  SEXP content_size, SEXP dict_id, SEXP ldm
+) {
   if (TYPEOF(x) != RAWSXP) Rf_error("`x` must be a raw vector");
   if (dict != R_NilValue && TYPEOF(dict) != RAWSXP) {
     Rf_error("`dict` must be a raw vector or NULL");    // # nocov
@@ -30,26 +76,29 @@ SEXP zstd_mem_compress_(SEXP x, SEXP level, SEXP dict) {
   }
 
   SEXP out = PROTECT(Rf_allocVector(RAWSXP, (R_xlen_t) bound));
-  size_t written;
-  if (dict == R_NilValue) {
-    written = ZSTD_compress(
-      RAW(out), bound,
-      srcSize ? RAW(x) : NULL, srcSize,
-      lvl
-    );
-  } else {
-    ZSTD_CCtx *cctx = ZSTD_createCCtx();
-    if (cctx == NULL) Rf_error("cannot create zstd compression context");    // # nocov
+
+  ZSTD_CCtx *cctx = ZSTD_createCCtx();
+  if (cctx == NULL) Rf_error("cannot create zstd compression context");    // # nocov
+  ZSTD_CCtx_setParameter(cctx, ZSTD_c_compressionLevel, lvl);
+  zstd_set_common_cparams(cctx, window_log, checksum, strategy, nb_workers, content_size, dict_id, ldm);
+  if (dict != R_NilValue) {
     size_t dictSize = (size_t) XLENGTH(dict);
-    written = ZSTD_compress_usingDict(
-      cctx,
-      RAW(out), bound,
-      srcSize ? RAW(x) : NULL, srcSize,
-      dictSize ? RAW(dict) : NULL, dictSize,
-      lvl
-    );
-    ZSTD_freeCCtx(cctx);
+    size_t dret = ZSTD_CCtx_loadDictionary(cctx, dictSize ? RAW(dict) : NULL, dictSize);
+    if (ZSTD_isError(dret)) {
+      // # nocov start
+      ZSTD_freeCCtx(cctx);
+      UNPROTECT(1);
+      Rf_error("zstd error loading dictionary: %s", ZSTD_getErrorName(dret));
+      // # nocov end
+    }
   }
+
+  size_t written = ZSTD_compress2(
+    cctx,
+    RAW(out), bound,
+    srcSize ? RAW(x) : NULL, srcSize
+  );
+  ZSTD_freeCCtx(cctx);
   if (ZSTD_isError(written)) {
     // # nocov start
     UNPROTECT(1);

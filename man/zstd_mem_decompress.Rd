@@ -16,7 +16,9 @@ used to compress \code{x}. See \code{\link[=zstd_mem_compress]{zstd_mem_compress
 A raw vector: the decompressed data.
 }
 \description{
-Decompress a Zstandard-compressed raw vector
+If the frame carries a content checksum (see the \code{checksum} argument of
+\code{\link[=zstd_mem_compress]{zstd_mem_compress()}}), it is verified automatically; an error is raised
+if the checksum does not match.
 }
 \examples{
 x <- charToRaw("hello world")
