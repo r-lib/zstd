@@ -1,6 +1,16 @@
+diff --git a/src/zstd.c b/src/zstd.c
+index 1a4fb77..a88a35a 100644
 --- a/src/zstd.c
 +++ b/src/zstd.c
-@@ -6172,12 +6172,12 @@
+@@ -16,6 +16,7 @@
+  * in the COPYING file in the root directory of this source tree).
+  * You may select, at your option, one of the above-listed licenses.
+  */
++#include <R_ext/Print.h> /* REprintf */
+ /*
+  * Settings to bake for the single library file.
+  *
+@@ -6172,12 +6173,12 @@ __attribute__((__unused__))
  #endif
  
  #if defined(__clang__) && __clang_major__ >= 5
@@ -16,7 +26,7 @@
  #endif
  
  ZSTDLIB_STATIC_API ZSTD_CCtx*    ZSTD_createCCtx_advanced(ZSTD_customMem customMem);
-@@ -13055,7 +13055,7 @@
+@@ -13055,7 +13056,7 @@ XXH3_len_129to240_64b(const xxh_u8* XXH_RESTRICT input, size_t len,
           * _actually works_ because it is a loop vectorization instead of an
           * SLP vectorization.
           */
@@ -25,7 +35,17 @@
  #endif
          for (i=8 ; i < nbRounds; i++) {
              /*
-@@ -48407,7 +48407,7 @@
+@@ -47146,8 +47147,7 @@ static int g_displayLevel = 0;
+ #undef  DISPLAY
+ #define DISPLAY(...)                                                           \
+   {                                                                            \
+-    fprintf(stderr, __VA_ARGS__);                                              \
+-    fflush(stderr);                                                            \
++    REprintf(__VA_ARGS__);                                                     \
+   }
+ #undef  LOCALDISPLAYLEVEL
+ #define LOCALDISPLAYLEVEL(displayLevel, l, ...)                                \
+@@ -48407,7 +48407,7 @@ ZDICTLIB_STATIC_API size_t ZDICT_optimizeTrainFromBuffer_cover(
  
  /*- Compiler specifics -*/
  #ifdef __clang__
@@ -34,7 +54,7 @@
  #endif
  
  #if defined(_MSC_VER)
-@@ -49947,13 +49947,13 @@
+@@ -49947,13 +49947,13 @@ note:
      {
          buf = SA + m;
          c0 = ALPHABET_SIZE - 2, c1 = ALPHABET_SIZE - 1, j = m;
@@ -50,9 +70,38 @@
              {
                if(0 < (l = j)) {
                  d0 = c0, d1 = c1;
+@@ -50410,8 +50410,7 @@ static int g_displayLevel = 0;
+ #undef  DISPLAY
+ #define DISPLAY(...)                                                           \
+   {                                                                            \
+-    fprintf(stderr, __VA_ARGS__);                                              \
+-    fflush(stderr);                                                            \
++    REprintf(__VA_ARGS__);                                                     \
+   }
+ #undef  LOCALDISPLAYLEVEL
+ #define LOCALDISPLAYLEVEL(displayLevel, l, ...)                                \
+@@ -51196,7 +51195,7 @@ static const U32 g_selectivity_default = 9;
+ *  Console display
+ ***************************************/
+ #undef  DISPLAY
+-#define DISPLAY(...)         do { fprintf(stderr, __VA_ARGS__); fflush( stderr ); } while (0)
++#define DISPLAY(...)         do { REprintf(__VA_ARGS__); } while (0)
+ #undef  DISPLAYLEVEL
+ #define DISPLAYLEVEL(l, ...) do { if (notificationLevel>=l) { DISPLAY(__VA_ARGS__); } } while (0)    /* 0 : no display;   1: errors;   2: default;  3: details;  4: debug */
+ 
+@@ -51606,7 +51605,6 @@ static size_t ZDICT_trainBuffer_legacy(dictItem* dictList, U32 dictListSize,
+                     displayClock = clock();                        \
+                     DISPLAY(__VA_ARGS__);                          \
+                 }                                                  \
+-                if (notificationLevel>=4) fflush(stderr);          \
+             }                                                      \
+         } while (0)
+ 
+diff --git a/src/zstd.h b/src/zstd.h
+index b8c0644..9d85b23 100644
 --- a/src/zstd.h
 +++ b/src/zstd.h
-@@ -1874,12 +1874,12 @@
+@@ -1874,12 +1874,12 @@ __attribute__((__unused__))
  #endif
  
  #if defined(__clang__) && __clang_major__ >= 5

@@ -16,6 +16,7 @@
  * in the COPYING file in the root directory of this source tree).
  * You may select, at your option, one of the above-listed licenses.
  */
+#include <R_ext/Print.h> /* REprintf */
 /*
  * Settings to bake for the single library file.
  *
@@ -47146,8 +47147,7 @@ static int g_displayLevel = 0;
 #undef  DISPLAY
 #define DISPLAY(...)                                                           \
   {                                                                            \
-    fprintf(stderr, __VA_ARGS__);                                              \
-    fflush(stderr);                                                            \
+    REprintf(__VA_ARGS__);                                                     \
   }
 #undef  LOCALDISPLAYLEVEL
 #define LOCALDISPLAYLEVEL(displayLevel, l, ...)                                \
@@ -50410,8 +50410,7 @@ static int g_displayLevel = 0;
 #undef  DISPLAY
 #define DISPLAY(...)                                                           \
   {                                                                            \
-    fprintf(stderr, __VA_ARGS__);                                              \
-    fflush(stderr);                                                            \
+    REprintf(__VA_ARGS__);                                                     \
   }
 #undef  LOCALDISPLAYLEVEL
 #define LOCALDISPLAYLEVEL(displayLevel, l, ...)                                \
@@ -51196,7 +51195,7 @@ static const U32 g_selectivity_default = 9;
 *  Console display
 ***************************************/
 #undef  DISPLAY
-#define DISPLAY(...)         do { fprintf(stderr, __VA_ARGS__); fflush( stderr ); } while (0)
+#define DISPLAY(...)         do { REprintf(__VA_ARGS__); } while (0)
 #undef  DISPLAYLEVEL
 #define DISPLAYLEVEL(l, ...) do { if (notificationLevel>=l) { DISPLAY(__VA_ARGS__); } } while (0)    /* 0 : no display;   1: errors;   2: default;  3: details;  4: debug */
 
@@ -51606,7 +51605,6 @@ static size_t ZDICT_trainBuffer_legacy(dictItem* dictList, U32 dictListSize,
                     displayClock = clock();                        \
                     DISPLAY(__VA_ARGS__);                          \
                 }                                                  \
-                if (notificationLevel>=4) fflush(stderr);          \
             }                                                      \
         } while (0)
 
