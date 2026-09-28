@@ -15,7 +15,7 @@ the same default as the \code{zstd} command line tool.}
 }
 \value{
 A raw vector: the trained dictionary. Pass it as the \code{dict}
-argument of \code{\link[=zstd_compress]{zstd_compress()}} and \code{\link[=zstd_decompress]{zstd_decompress()}}.
+argument of \code{\link[=zstd_mem_compress]{zstd_mem_compress()}} and \code{\link[=zstd_mem_decompress]{zstd_mem_decompress()}}.
 }
 \description{
 Dictionaries improve the compression ratio of many small, similar
@@ -28,6 +28,6 @@ samples <- lapply(1:100, function(i) {
   charToRaw(paste0('{"id":', i, ',"name":"sample"}'))
 })
 dict <- zstd_train_dict(samples, size = 1000)
-cmp <- zstd_compress(samples[[1]], dict = dict)
-identical(zstd_decompress(cmp, dict = dict), samples[[1]])
+cmp <- zstd_mem_compress(samples[[1]], dict = dict)
+identical(zstd_mem_decompress(cmp, dict = dict), samples[[1]])
 }

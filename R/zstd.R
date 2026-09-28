@@ -8,14 +8,14 @@
 #'   by [zstd_train_dict()], or any raw content dictionary). Using a
 #'   dictionary can substantially improve the compression ratio of small,
 #'   similar inputs. The same dictionary must be passed to
-#'   [zstd_decompress()].
+#'   [zstd_mem_decompress()].
 #' @return A raw vector: the compressed data.
 #' @export
 #' @examples
 #' x <- charToRaw(paste(rep("hello world ", 1000), collapse = ""))
-#' cmp <- zstd_compress(x)
-#' identical(zstd_decompress(cmp), x)
-zstd_compress <- function(x, level = zstd_default_clevel(), dict = NULL) {
+#' cmp <- zstd_mem_compress(x)
+#' identical(zstd_mem_decompress(cmp), x)
+zstd_mem_compress <- function(x, level = zstd_default_clevel(), dict = NULL) {
   if (!is.raw(x)) {
     stop("`x` must be a raw vector", call. = FALSE)
   }
@@ -30,27 +30,27 @@ zstd_compress <- function(x, level = zstd_default_clevel(), dict = NULL) {
       call. = FALSE
     )
   }
-  .Call(zstd_compress_, x, level, dict)
+  .Call(zstd_mem_compress_, x, level, dict)
 }
 
 #' Decompress a Zstandard-compressed raw vector
 #'
 #' @param x A raw vector of Zstandard-compressed data (a single frame).
 #' @param dict `NULL`, or a raw vector containing the dictionary that was
-#'   used to compress `x`. See [zstd_compress()].
+#'   used to compress `x`. See [zstd_mem_compress()].
 #' @return A raw vector: the decompressed data.
 #' @export
 #' @examples
 #' x <- charToRaw("hello world")
-#' zstd_decompress(zstd_compress(x))
-zstd_decompress <- function(x, dict = NULL) {
+#' zstd_mem_decompress(zstd_mem_compress(x))
+zstd_mem_decompress <- function(x, dict = NULL) {
   if (!is.raw(x)) {
     stop("`x` must be a raw vector", call. = FALSE)
   }
   if (!is.null(dict) && !is.raw(dict)) {
     stop("`dict` must be a raw vector or NULL", call. = FALSE)
   }
-  .Call(zstd_decompress_, x, dict)
+  .Call(zstd_mem_decompress_, x, dict)
 }
 
 #' Train a Zstandard dictionary from sample data
@@ -65,15 +65,15 @@ zstd_decompress <- function(x, dict = NULL) {
 #' @param size Target dictionary size, in bytes. Defaults to 112640 (110KB),
 #'   the same default as the `zstd` command line tool.
 #' @return A raw vector: the trained dictionary. Pass it as the `dict`
-#'   argument of [zstd_compress()] and [zstd_decompress()].
+#'   argument of [zstd_mem_compress()] and [zstd_mem_decompress()].
 #' @export
 #' @examples
 #' samples <- lapply(1:100, function(i) {
 #'   charToRaw(paste0('{"id":', i, ',"name":"sample"}'))
 #' })
 #' dict <- zstd_train_dict(samples, size = 1000)
-#' cmp <- zstd_compress(samples[[1]], dict = dict)
-#' identical(zstd_decompress(cmp, dict = dict), samples[[1]])
+#' cmp <- zstd_mem_compress(samples[[1]], dict = dict)
+#' identical(zstd_mem_decompress(cmp, dict = dict), samples[[1]])
 zstd_train_dict <- function(samples, size = 112640L) {
   if (!is.list(samples) || !all(vapply(samples, is.raw, logical(1)))) {
     stop("`samples` must be a list of raw vectors", call. = FALSE)
@@ -109,7 +109,7 @@ zstd_train_dict <- function(samples, size = 112640L) {
 #' @export
 #' @examples
 #' tmp <- tempfile()
-#' writeBin(zstd_compress(charToRaw("hello world")), tmp)
+#' writeBin(zstd_mem_compress(charToRaw("hello world")), tmp)
 #' zstd_info(tmp)
 zstd_info <- function(path) {
   if (!is.character(path) || length(path) != 1 || is.na(path)) {

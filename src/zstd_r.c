@@ -6,7 +6,7 @@
 #include "zstd.h"
 #include "zdict.h"
 
-SEXP zstd_compress_(SEXP x, SEXP level, SEXP dict) {
+SEXP zstd_mem_compress_(SEXP x, SEXP level, SEXP dict) {
   if (TYPEOF(x) != RAWSXP) Rf_error("`x` must be a raw vector");
   if (dict != R_NilValue && TYPEOF(dict) != RAWSXP) {
     Rf_error("`dict` must be a raw vector or NULL");    // # nocov
@@ -53,7 +53,7 @@ SEXP zstd_compress_(SEXP x, SEXP level, SEXP dict) {
   return res;
 }
 
-SEXP zstd_decompress_(SEXP x, SEXP dict) {
+SEXP zstd_mem_decompress_(SEXP x, SEXP dict) {
   if (TYPEOF(x) != RAWSXP) Rf_error("`x` must be a raw vector");
   if (dict != R_NilValue && TYPEOF(dict) != RAWSXP) {
     Rf_error("`dict` must be a raw vector or NULL");    // # nocov

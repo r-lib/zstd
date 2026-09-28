@@ -6,43 +6,43 @@ test_that("round-trip works for various inputs", {
     random = as.raw(sample(0:255, 10000, replace = TRUE))
   )
   for (x in cases) {
-    cmp <- zstd_compress(x)
+    cmp <- zstd_mem_compress(x)
     expect_true(is.raw(cmp))
-    expect_identical(zstd_decompress(cmp), x)
+    expect_identical(zstd_mem_decompress(cmp), x)
   }
 })
 
 test_that("compression level affects output and is validated", {
   x <- charToRaw(paste(rep("abcabcabc", 1000), collapse = ""))
-  small <- zstd_compress(x, level = zstd_min_clevel())
-  big   <- zstd_compress(x, level = zstd_max_clevel())
-  expect_identical(zstd_decompress(small), x)
-  expect_identical(zstd_decompress(big), x)
+  small <- zstd_mem_compress(x, level = zstd_min_clevel())
+  big   <- zstd_mem_compress(x, level = zstd_max_clevel())
+  expect_identical(zstd_mem_decompress(small), x)
+  expect_identical(zstd_mem_decompress(big), x)
 
-  expect_error(zstd_compress(x, level = zstd_min_clevel() - 1L))
-  expect_error(zstd_compress(x, level = zstd_max_clevel() + 1L))
+  expect_error(zstd_mem_compress(x, level = zstd_min_clevel() - 1L))
+  expect_error(zstd_mem_compress(x, level = zstd_max_clevel() + 1L))
 })
 
 test_that("default level round-trips", {
   x <- charToRaw("some data")
-  expect_identical(zstd_decompress(zstd_compress(x)), x)
+  expect_identical(zstd_mem_decompress(zstd_mem_compress(x)), x)
 })
 
 test_that("bad input types are rejected", {
-  expect_error(zstd_compress("not raw"))
-  expect_error(zstd_decompress("not raw"))
-  expect_error(zstd_decompress(list()))
+  expect_error(zstd_mem_compress("not raw"))
+  expect_error(zstd_mem_decompress("not raw"))
+  expect_error(zstd_mem_decompress(list()))
 })
 
 test_that("corrupt/truncated input errors out cleanly", {
   x <- charToRaw(paste(rep("hello", 100), collapse = ""))
-  cmp <- zstd_compress(x)
+  cmp <- zstd_mem_compress(x)
 
   truncated <- cmp[seq_len(length(cmp) - 5)]
-  expect_error(zstd_decompress(truncated))
+  expect_error(zstd_mem_decompress(truncated))
 
   garbage <- as.raw(sample(0:255, 20, replace = TRUE))
-  expect_error(zstd_decompress(garbage))
+  expect_error(zstd_mem_decompress(garbage))
 })
 
 test_that("level bound accessors are sane", {
@@ -52,7 +52,7 @@ test_that("level bound accessors are sane", {
 
 test_that("zstd_info() reports single-frame info", {
   x <- charToRaw(paste(rep("hello world ", 1000), collapse = ""))
-  cmp <- zstd_compress(x)
+  cmp <- zstd_mem_compress(x)
   tmp <- tempfile()
   on.exit(unlink(tmp))
   writeBin(cmp, tmp)
@@ -69,8 +69,8 @@ test_that("zstd_info() reports single-frame info", {
 test_that("zstd_info() handles concatenated (multi-frame) files", {
   x1 <- charToRaw("first chunk of data")
   x2 <- charToRaw(paste(rep("second chunk ", 100), collapse = ""))
-  cmp1 <- zstd_compress(x1)
-  cmp2 <- zstd_compress(x2)
+  cmp1 <- zstd_mem_compress(x1)
+  cmp2 <- zstd_mem_compress(x2)
 
   tmp <- tempfile()
   on.exit(unlink(tmp))
@@ -96,7 +96,7 @@ test_that("zstd_info() validates its argument", {
 
 test_that("zstd_info() errors on corrupt data", {
   x <- charToRaw(paste(rep("hello", 100), collapse = ""))
-  cmp <- zstd_compress(x)
+  cmp <- zstd_mem_compress(x)
   tmp <- tempfile()
   on.exit(unlink(tmp))
   writeBin(cmp[seq_len(length(cmp) - 5)], tmp)
@@ -111,9 +111,9 @@ test_that("dictionary compression round-trips and helps small inputs", {
   expect_true(is.raw(dict))
 
   x <- samples[[1]]
-  cmp_dict <- zstd_compress(x, dict = dict)
-  cmp_plain <- zstd_compress(x)
-  expect_identical(zstd_decompress(cmp_dict, dict = dict), x)
+  cmp_dict <- zstd_mem_compress(x, dict = dict)
+  cmp_plain <- zstd_mem_compress(x)
+  expect_identical(zstd_mem_decompress(cmp_dict, dict = dict), x)
   expect_lt(length(cmp_dict), length(cmp_plain))
 })
 
@@ -123,11 +123,11 @@ test_that("dictionary mismatch/misuse errors out cleanly", {
   })
   dict <- zstd_train_dict(samples, size = 1000)
   x <- samples[[1]]
-  cmp <- zstd_compress(x, dict = dict)
+  cmp <- zstd_mem_compress(x, dict = dict)
 
-  expect_error(zstd_decompress(cmp))
-  expect_error(zstd_compress(x, dict = "not raw"))
-  expect_error(zstd_decompress(cmp, dict = "not raw"))
+  expect_error(zstd_mem_decompress(cmp))
+  expect_error(zstd_mem_compress(x, dict = "not raw"))
+  expect_error(zstd_mem_decompress(cmp, dict = "not raw"))
 })
 
 test_that("zstd_train_dict() validates its arguments", {

@@ -34,6 +34,6 @@ appear in the file.
 }
 \examples{
 tmp <- tempfile()
-writeBin(zstd_compress(charToRaw("hello world")), tmp)
+writeBin(zstd_mem_compress(charToRaw("hello world")), tmp)
 zstd_info(tmp)
 }
