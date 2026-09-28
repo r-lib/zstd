@@ -82,11 +82,14 @@ used to compress <code>input</code>. See <code><a href="zstd_tar_compress.html">
     </div>
     <div id="details">
     <h2>Details</h2>
-    <p>Only plain ustar-format entries are supported (as written by
-<code><a href="zstd_tar_compress.html">zstd_tar_compress()</a></code>, with paths up to about 254 bytes). Archives
-created by other tools that use GNU long name/link headers or PAX
-extended headers (typically for even longer paths) are not supported,
-and raise an error rather than being extracted incorrectly.</p>
+    <p>Plain ustar-format entries (as written by <code><a href="zstd_tar_compress.html">zstd_tar_compress()</a></code>, with
+paths up to about 254 bytes) and PAX extended headers (as written by,
+e.g., macOS's default <code>tar</code>, for longer paths or link targets) are
+supported. <code>mtime</code>, and, outside Windows, <code>uid</code>/<code>gid</code> are applied to
+extracted files and directories (best-effort: e.g. <code>chown()</code> silently
+has no effect when not running as root). Archives created by other
+tools that use GNU long name/link headers are not supported, and raise
+an error rather than being extracted incorrectly.</p>
     </div>
 
     <div id="ref-examples">
