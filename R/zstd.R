@@ -93,8 +93,10 @@ zstd_train_dict <- function(samples, size = 112640L) {
 #' existing file), returning one row per frame in the order they
 #' appear in the file.
 #'
-#' @param path Path to a zstd-compressed file.
+#' @param path Path to a zstd-compressed file, or a glob pattern (e.g.
+#'   `"*.zst"`) matching several files.
 #' @return A data frame with one row per frame, and columns:
+#'   * `path`: path of the file the frame came from.
 #'   * `type`: `"frame"` for a regular zstd frame, `"skippable"` for a
 #'     skippable frame.
 #'   * `compressed_size`: size of the frame on disk, in bytes.
@@ -115,11 +117,16 @@ zstd_info <- function(path) {
   if (!is.character(path) || length(path) != 1 || is.na(path)) {
     stop("`path` must be a single string", call. = FALSE)
   }
-  if (!file.exists(path)) {
-    stop("File does not exist: ", path, call. = FALSE)
+  files <- Sys.glob(path)
+  if (length(files) == 0) {
+    stop("No files match: ", path, call. = FALSE)
   }
-  bin <- readBin(path, "raw", file.size(path))
-  as.data.frame(.Call(zstd_info_, bin), stringsAsFactors = FALSE)
+  info <- lapply(files, function(file) {
+    bin <- readBin(file, "raw", file.size(file))
+    df <- as.data.frame(.Call(zstd_info_, bin), stringsAsFactors = FALSE)
+    cbind(path = file, df, stringsAsFactors = FALSE)
+  })
+  do.call(rbind, info)
 }
 
 #' Zstandard compression level bounds

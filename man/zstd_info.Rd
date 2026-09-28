@@ -7,11 +7,13 @@
 zstd_info(path)
 }
 \arguments{
-\item{path}{Path to a zstd-compressed file.}
+\item{path}{Path to a zstd-compressed file, or a glob pattern (e.g.
+\code{"*.zst"}) matching several files.}
 }
 \value{
 A data frame with one row per frame, and columns:
 \itemize{
+\item \code{path}: path of the file the frame came from.
 \item \code{type}: \code{"frame"} for a regular zstd frame, \code{"skippable"} for a
 skippable frame.
 \item \code{compressed_size}: size of the frame on disk, in bytes.

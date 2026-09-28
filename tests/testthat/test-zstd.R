@@ -60,6 +60,8 @@ test_that("zstd_info() reports single-frame info", {
   info <- zstd_info(tmp)
   expect_s3_class(info, "data.frame")
   expect_equal(nrow(info), 1)
+  expect_identical(names(info)[1], "path")
+  expect_identical(info$path, tmp)
   expect_identical(info$type, "frame")
   expect_identical(info$compressed_size, as.double(length(cmp)))
   expect_identical(info$content_size, as.double(length(x)))
@@ -92,6 +94,26 @@ test_that("zstd_info() validates its argument", {
   expect_error(zstd_info(c("a", "b")))
   expect_error(zstd_info(NA_character_))
   expect_error(zstd_info(tempfile()))
+})
+
+test_that("zstd_info() supports glob patterns over multiple files", {
+  dir <- tempfile()
+  dir.create(dir)
+  on.exit(unlink(dir, recursive = TRUE))
+
+  x1 <- charToRaw("first file")
+  x2 <- charToRaw(paste(rep("second file ", 50), collapse = ""))
+  f1 <- file.path(dir, "a.zst")
+  f2 <- file.path(dir, "b.zst")
+  writeBin(zstd_mem_compress(x1), f1)
+  writeBin(zstd_mem_compress(x2), f2)
+
+  info <- zstd_info(file.path(dir, "*.zst"))
+  expect_identical(names(info)[1], "path")
+  expect_equal(nrow(info), 2)
+  expect_setequal(info$path, c(f1, f2))
+  expect_equal(info$content_size[info$path == f1], as.double(length(x1)))
+  expect_equal(info$content_size[info$path == f2], as.double(length(x2)))
 })
 
 test_that("zstd_info() errors on corrupt data", {
