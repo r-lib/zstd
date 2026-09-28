@@ -12,14 +12,66 @@
 
 #ifdef _WIN32
 #include <direct.h>
+#include <sys/stat.h>
+#include <sys/utime.h>
 #define zstd_mkdir(path) _mkdir(path)
 #else
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
+#include <utime.h>
 #define zstd_mkdir(path) mkdir(path, 0777)
 #endif
 
+/* Best-effort source file attributes to store in a tar entry: mode bits
+ * and (outside Windows, which has no matching concept) uid/gid, so that
+ * extracting the archive as the same user restores real ownership
+ * instead of always recording uid/gid 0 (root). */
+static void get_file_attrs(const char *path, unsigned *mode, unsigned *uid, unsigned *gid) {
+#ifdef _WIN32
+  struct _stat st;
+  *mode = (_stat(path, &st) == 0) ? (unsigned) (st.st_mode & 0777) : 0644;
+  *uid = 0;
+  *gid = 0;
+#else
+  struct stat st;
+  if (stat(path, &st) == 0) {
+    *mode = (unsigned) (st.st_mode & 07777);
+    *uid = (unsigned) st.st_uid;
+    *gid = (unsigned) st.st_gid;
+  } else {
+    // # nocov start
+    *mode = 0644;
+    *uid = 0;
+    *gid = 0;
+    // # nocov end
+  }
+#endif
+}
+
 /* ---- shared helpers ---------------------------------------------------- */
+
+/* Sets mtime (and, outside Windows, uid/gid) on an already-extracted
+ * entry. Best-effort: failures (e.g. chown() without root) are not
+ * fatal, but flag `*chown_failed` so the caller can emit a single
+ * summary warning for the whole archive instead of one per file. */
+static void apply_attrs(
+  const char *path, unsigned mtime, unsigned uid, unsigned gid,
+  int *chown_failed
+) {
+#ifdef _WIN32
+  struct _utimbuf ut;
+  ut.actime = (time_t) mtime;
+  ut.modtime = (time_t) mtime;
+  if (_utime(path, &ut) != 0) *chown_failed = 1;
+#else
+  struct utimbuf ut;
+  ut.actime = (time_t) mtime;
+  ut.modtime = (time_t) mtime;
+  if (utime(path, &ut) != 0) *chown_failed = 1;
+  if (chown(path, (uid_t) uid, (gid_t) gid) != 0) *chown_failed = 1;
+#endif
+}
 
 /* Creates `path` and all of its missing parent directories. */
 static int mkdir_p(char *path) {
@@ -161,7 +213,9 @@ SEXP zstd_tar_compress_(
       } else {
         name_buf[nlen] = '\0';
       }
-      int err = mtar_write_dir_header(&tar, name_buf);
+      unsigned mode, uid, gid;
+      get_file_attrs(path, &mode, &uid, &gid);
+      int err = mtar_write_dir_header(&tar, name_buf, mode, uid, gid);
       if (err) {
         ZSTD_freeCCtx(cctx);
         fclose(fout);
@@ -194,7 +248,9 @@ SEXP zstd_tar_compress_(
       // # nocov end
     }
 
-    int err = mtar_write_file_header(&tar, name, (unsigned) fsize);
+    unsigned mode, uid, gid;
+    get_file_attrs(path, &mode, &uid, &gid);
+    int err = mtar_write_file_header(&tar, name, (unsigned) fsize, mode, uid, gid);
     if (err) {
       fclose(fin);
       ZSTD_freeCCtx(cctx);
@@ -276,6 +332,105 @@ SEXP zstd_tar_compress_(
 }
 
 /* ---- decompression: zstd file -> plain tar file -> extracted files ----- */
+
+/* Overrides carried by a Pax extended header ('x': applies only to the
+ * entry immediately following it; 'g': applies to all following entries,
+ * until a later 'g' header overrides the same key again). Unset fields
+ * (NULL name/linkname, has_* == 0) mean "fall back to the ustar header". */
+typedef struct {
+  char *name;
+  char *linkname;
+  int has_mtime; unsigned mtime;
+  int has_uid;   unsigned uid;
+  int has_gid;   unsigned gid;
+  int has_size;  unsigned size;    /* only used for the mismatch check */
+} pax_overrides_t;
+
+/* Reads the data block of a Pax extended header ('x' or 'g', h->type) and
+ * parses its "<len> key=value\n" records, updating only the fields in
+ * `*out` whose key is present in this block. Unknown keys (atime, ctime,
+ * comment, SCHILY.*, LIBARCHIVE.*, ...) are silently ignored, matching
+ * this package's existing behavior of not applying ustar attributes it
+ * doesn't otherwise consume. */
+static void read_pax_records(mtar_t *tar, const mtar_header_t *h, pax_overrides_t *out) {
+  unsigned size = h->size;
+  if (size == 0) return;
+
+  char *data = (char *) R_alloc((size_t) size + 1, 1);
+  unsigned remaining = size;
+  size_t off = 0;
+  size_t const bufSize = 1 << 16;
+  while (remaining > 0) {
+    unsigned chunk = remaining < bufSize ? remaining : (unsigned) bufSize;
+    int rerr = mtar_read_data(tar, data + off, chunk);
+    if (rerr) {
+      mtar_close(tar);
+      Rf_error("Error reading Pax extended header: %s", mtar_strerror(rerr));
+    }
+    off += chunk;
+    remaining -= chunk;
+  }
+  data[size] = '\0';
+
+  size_t pos = 0;
+  while (pos < size) {
+    size_t p = pos;
+    size_t reclen = 0;
+    while (p < size && data[p] >= '0' && data[p] <= '9') {
+      reclen = reclen * 10 + (size_t) (data[p] - '0');
+      p++;
+    }
+    if (p == pos || p >= size || data[p] != ' ' || reclen == 0 || pos + reclen > size) {
+      mtar_close(tar);
+      Rf_error("Malformed Pax extended header record in tar archive");
+    }
+    size_t rec_end = pos + reclen;
+    if (data[rec_end - 1] != '\n') {
+      mtar_close(tar);
+      Rf_error("Malformed Pax extended header record in tar archive");
+    }
+
+    size_t key_start = p + 1;
+    size_t eq = key_start;
+    while (eq < rec_end - 1 && data[eq] != '=') eq++;
+    if (eq >= rec_end - 1) {
+      mtar_close(tar);
+      Rf_error("Malformed Pax extended header record in tar archive");
+    }
+    size_t key_len = eq - key_start;
+    size_t val_start = eq + 1;
+    size_t val_len = (rec_end - 1) - val_start;
+    const char *key = data + key_start;
+    const char *val = data + val_start;
+
+    if (key_len == 4 && memcmp(key, "path", 4) == 0) {
+      char *v = (char *) R_alloc(val_len + 1, 1);
+      memcpy(v, val, val_len);
+      v[val_len] = '\0';
+      out->name = v;
+    } else if (key_len == 8 && memcmp(key, "linkpath", 8) == 0) {
+      char *v = (char *) R_alloc(val_len + 1, 1);
+      memcpy(v, val, val_len);
+      v[val_len] = '\0';
+      out->linkname = v;
+    } else if (key_len == 5 && memcmp(key, "mtime", 5) == 0) {
+      out->has_mtime = 1;
+      out->mtime = (unsigned) strtoul(val, NULL, 10);
+    } else if (key_len == 3 && memcmp(key, "uid", 3) == 0) {
+      out->has_uid = 1;
+      out->uid = (unsigned) strtoul(val, NULL, 10);
+    } else if (key_len == 3 && memcmp(key, "gid", 3) == 0) {
+      out->has_gid = 1;
+      out->gid = (unsigned) strtoul(val, NULL, 10);
+    } else if (key_len == 4 && memcmp(key, "size", 4) == 0) {
+      out->has_size = 1;
+      out->size = (unsigned) strtoul(val, NULL, 10);
+    }
+    /* other keys intentionally ignored */
+
+    pos = rec_end;
+  }
+}
 
 static void decompress_to_file(const char *input_path, const char *output_path, SEXP dict) {
   FILE *fin = zstd_fopen(input_path, "rb");
@@ -394,23 +549,85 @@ SEXP zstd_tar_decompress_(SEXP input, SEXP exdir, SEXP dict, SEXP tmp) {
   void *buf = R_alloc(bufSize, 1);
   size_t exdir_len = strlen(exdir_path);
 
+  pax_overrides_t pax = {0};
+  pax_overrides_t global = {0};
+  int chown_failed = 0;
+
   mtar_header_t h;
   while ((err = mtar_read_header(&tar, &h)) == MTAR_ESUCCESS) {
-    /* 'x'/'g' are PAX extended (per-file/global) headers, 'L'/'K' are GNU
-     * long-name/long-linkname headers. This package only understands
-     * plain ustar headers (with the 'prefix' field for names up to
-     * ~254 bytes); silently continuing would misread the entry that
-     * follows (its real name is stored in this header's *data*, not in
-     * the 'name' field microtar decoded). Fail clearly instead. */
-    if (h.type == 'x' || h.type == 'g' || h.type == 'L' || h.type == 'K') {
+    if (h.type == 'x') {
+      pax = (pax_overrides_t){0};
+      read_pax_records(&tar, &h, &pax);
+      err = mtar_next(&tar);
+      if (err && err != MTAR_ENULLRECORD) {
+        // # nocov start
+        mtar_close(&tar);
+        Rf_error("Error reading tar archive: %s", mtar_strerror(err));
+        // # nocov end
+      }
+      continue;
+    }
+    if (h.type == 'g') {
+      read_pax_records(&tar, &h, &global);
+      err = mtar_next(&tar);
+      if (err && err != MTAR_ENULLRECORD) {
+        // # nocov start
+        mtar_close(&tar);
+        Rf_error("Error reading tar archive: %s", mtar_strerror(err));
+        // # nocov end
+      }
+      continue;
+    }
+    /* 'L'/'K' are GNU long-name/long-linkname headers, a different (non-
+     * Pax) extension this package doesn't understand; silently continuing
+     * would misread the entry that follows (its real name is stored in
+     * this header's *data*, not in the 'name' field microtar decoded).
+     * Fail clearly instead. */
+    if (h.type == 'L' || h.type == 'K') {
       mtar_close(&tar);
       Rf_error(
-        "This tar archive uses an extended header (type '%c') not "
-        "supported by this package, such as a GNU long name/link or a "
-        "PAX extended attribute; cannot extract it safely.",
+        "This tar archive uses a GNU long name/link extended header "
+        "(type '%c') not supported by this package; cannot extract it "
+        "safely.",
         h.type
       );
     }
+
+    {
+      const char *eff_name = pax.name ? pax.name : (global.name ? global.name : h.name);
+      const char *eff_linkname = pax.linkname ? pax.linkname : (global.linkname ? global.linkname : h.linkname);
+      if (eff_name != h.name) {
+        if (strlen(eff_name) + 1 > sizeof(h.name)) {
+          mtar_close(&tar);
+          Rf_error("Pax-overridden path too long: '%s'", eff_name);
+        }
+        strcpy(h.name, eff_name);
+      }
+      if (eff_linkname != h.linkname) {
+        if (strlen(eff_linkname) + 1 > sizeof(h.linkname)) {
+          mtar_close(&tar);
+          Rf_error("Pax-overridden link path too long: '%s'", eff_linkname);
+        }
+        strcpy(h.linkname, eff_linkname);
+      }
+    }
+
+    if (pax.has_size && pax.size != h.size) {
+      Rf_warning(
+        "Tar entry '%s': Pax 'size' (%u) does not match the ustar header "
+        "size (%u); using the ustar size", h.name, pax.size, h.size
+      );
+    } else if (global.has_size && global.size != h.size) {
+      Rf_warning(
+        "Tar entry '%s': Pax global 'size' (%u) does not match the ustar "
+        "header size (%u); using the ustar size", h.name, global.size, h.size
+      );
+    }
+
+    unsigned eff_mtime = pax.has_mtime ? pax.mtime : (global.has_mtime ? global.mtime : h.mtime);
+    unsigned eff_uid = pax.has_uid ? pax.uid : (global.has_uid ? global.uid : h.uid);
+    unsigned eff_gid = pax.has_gid ? pax.gid : (global.has_gid ? global.gid : h.gid);
+    pax = (pax_overrides_t){0};
 
     if (path_is_unsafe(h.name)) {
       mtar_close(&tar);
@@ -430,6 +647,7 @@ SEXP zstd_tar_decompress_(SEXP input, SEXP exdir, SEXP dict, SEXP tmp) {
         Rf_error("Cannot create directory '%s': %s", full_path, strerror(errno));
         // # nocov end
       }
+      apply_attrs(full_path, eff_mtime, eff_uid, eff_gid, &chown_failed);
     } else if (h.type == MTAR_TREG) {
       char *slash = strrchr(full_path, '/');
       if (slash != NULL) {
@@ -474,6 +692,7 @@ SEXP zstd_tar_decompress_(SEXP input, SEXP exdir, SEXP dict, SEXP tmp) {
         Rf_error("Error closing output file '%s': %s", full_path, strerror(errno));
         // # nocov end
       }
+      apply_attrs(full_path, eff_mtime, eff_uid, eff_gid, &chown_failed);
     }
     /* other entry types (symlinks, devices, fifos) are skipped */
 
@@ -491,5 +710,11 @@ SEXP zstd_tar_decompress_(SEXP input, SEXP exdir, SEXP dict, SEXP tmp) {
   }
 
   mtar_close(&tar);
+  if (chown_failed) {
+    Rf_warning(
+      "Could not set the modification time and/or ownership of one or "
+      "more extracted files (e.g. not running as root)"
+    );
+  }
   return R_NilValue;
 }

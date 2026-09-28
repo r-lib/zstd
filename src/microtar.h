@@ -7,6 +7,9 @@
  * Modified for the 'zstd' R package: added ustar 'prefix' field support
  * (for relative paths longer than 100 bytes, up to ~255 bytes) and bounds
  * checks on all name/linkname copies (upstream used unchecked strcpy()).
+ * Also renamed 'owner' to 'uid' and added a 'gid' field (from the raw
+ * 'group' field, previously parsed but discarded) to support Pax header
+ * uid/gid overrides during extraction.
  * See 'inst/COPYRIGHTS' and 'inst/LICENSE-microtar'.
  */
 
@@ -52,7 +55,8 @@ enum {
 
 typedef struct {
   unsigned mode;
-  unsigned owner;
+  unsigned uid;
+  unsigned gid;
   unsigned size;
   unsigned mtime;
   unsigned type;
@@ -88,8 +92,13 @@ int mtar_read_header(mtar_t *tar, mtar_header_t *h);
 int mtar_read_data(mtar_t *tar, void *ptr, unsigned size);
 
 int mtar_write_header(mtar_t *tar, const mtar_header_t *h);
-int mtar_write_file_header(mtar_t *tar, const char *name, unsigned size);
-int mtar_write_dir_header(mtar_t *tar, const char *name);
+int mtar_write_file_header(
+  mtar_t *tar, const char *name, unsigned size, unsigned mode, unsigned uid,
+  unsigned gid
+);
+int mtar_write_dir_header(
+  mtar_t *tar, const char *name, unsigned mode, unsigned uid, unsigned gid
+);
 int mtar_write_data(mtar_t *tar, const void *data, unsigned size);
 int mtar_finalize(mtar_t *tar);
 

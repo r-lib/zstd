@@ -477,11 +477,14 @@ zstd_tar_compress <- function(
 #' streaming API for the decompression step, so memory use for that step
 #' stays bounded regardless of the total size of the archive.
 #'
-#' Only plain ustar-format entries are supported (as written by
-#' [zstd_tar_compress()], with paths up to about 254 bytes). Archives
-#' created by other tools that use GNU long name/link headers or PAX
-#' extended headers (typically for even longer paths) are not supported,
-#' and raise an error rather than being extracted incorrectly.
+#' Plain ustar-format entries (as written by [zstd_tar_compress()], with
+#' paths up to about 254 bytes) and PAX extended headers (as written by,
+#' e.g., macOS's default `tar`, for longer paths or link targets) are
+#' supported. `mtime`, and, outside Windows, `uid`/`gid` are applied to
+#' extracted files and directories (best-effort: e.g. `chown()` silently
+#' has no effect when not running as root). Archives created by other
+#' tools that use GNU long name/link headers are not supported, and raise
+#' an error rather than being extracted incorrectly.
 #'
 #' @param input Path to a `.tar.zst` file, as created by
 #'   [zstd_tar_compress()].

@@ -386,44 +386,166 @@ test_that("zstd_tar_decompress() refuses path-traversal entries", {
   expect_error(zstd_tar_decompress(archive, tempfile()))
 })
 
-test_that("zstd_tar_decompress() refuses PAX/GNU extended headers instead of misreading them", {
-  make_tar_header <- function(name, size, type = "0") {
-    h <- raw(512)
-    raw_name <- charToRaw(name)
-    h[seq_along(raw_name)] <- raw_name
-    set_field <- function(h, start, value) {
-      v <- charToRaw(value)
-      h[start:(start + length(v) - 1)] <- v
-      h
-    }
-    h <- set_field(h, 101, sprintf("%07o", 420))
-    h <- set_field(h, 109, sprintf("%07o", 0))
-    h <- set_field(h, 117, sprintf("%07o", 0))
-    h <- set_field(h, 125, sprintf("%011o", size))
-    h <- set_field(h, 137, sprintf("%011o", 0))
-    h[149:156] <- charToRaw("        ")
-    h <- set_field(h, 157, type)
-    h <- set_field(h, 258, "ustar")
-    h[264:265] <- charToRaw("00")
-    chk <- sum(as.integer(h))
-    h <- set_field(h, 149, sprintf("%06o", chk))
-    h[155] <- as.raw(0)
-    h[156] <- charToRaw(" ")
+# Shared helpers for the PAX/GNU extended header tests below.
+
+# Builds a single "<len> <text>\n" PAX record, computing `len` (which
+# includes its own decimal representation) the same way real tar writers
+# do: iterate until the length prefix's own width stops changing the
+# total.
+pax_raw_record <- function(text) {
+  body <- paste0(" ", text, "\n")
+  n <- nchar(body) + 1
+  repeat {
+    reclen <- nchar(as.character(n)) + nchar(body)
+    if (reclen == n) return(paste0(n, body))
+    n <- reclen
+  }
+}
+
+pax_record <- function(key, value) pax_raw_record(paste0(key, "=", value))
+
+# The current user's uid/gid, so the tar fixtures below can set a real
+# owner instead of 0 (root): chown()ing extracted files to the uid/gid
+# that's already running the test succeeds even when not running as
+# root, unlike chown(..., 0, 0). Falls back to 0 where `id` isn't
+# available (e.g. Windows), where the fixed-owner tests are skipped.
+test_uid <- suppressWarnings(as.integer(tryCatch(system("id -u", intern = TRUE), error = function(e) NA)))
+test_gid <- suppressWarnings(as.integer(tryCatch(system("id -g", intern = TRUE), error = function(e) NA)))
+if (is.na(test_uid)) test_uid <- 0L
+if (is.na(test_gid)) test_gid <- 0L
+
+make_tar_header <- function(name, size, type = "0") {
+  h <- raw(512)
+  raw_name <- charToRaw(name)
+  h[seq_along(raw_name)] <- raw_name
+  set_field <- function(h, start, value) {
+    v <- charToRaw(value)
+    h[start:(start + length(v) - 1)] <- v
     h
   }
+  h <- set_field(h, 101, sprintf("%07o", 420))
+  h <- set_field(h, 109, sprintf("%07o", test_uid))
+  h <- set_field(h, 117, sprintf("%07o", test_gid))
+  h <- set_field(h, 125, sprintf("%011o", size))
+  h <- set_field(h, 137, sprintf("%011o", 0))
+  h[149:156] <- charToRaw("        ")
+  h <- set_field(h, 157, type)
+  h <- set_field(h, 258, "ustar")
+  h[264:265] <- charToRaw("00")
+  chk <- sum(as.integer(h))
+  h <- set_field(h, 149, sprintf("%06o", chk))
+  h[155] <- as.raw(0)
+  h[156] <- charToRaw(" ")
+  h
+}
 
+write_tar_entry <- function(con, name, content, type = "0") {
+  writeBin(make_tar_header(name, length(content), type = type), con)
+  writeBin(content, con)
+  pad_len <- (512 - (length(content) %% 512)) %% 512
+  if (pad_len > 0) writeBin(raw(pad_len), con)
+}
+
+test_that("zstd_tar_decompress() applies a PAX 'x' extended header's path override", {
   # A 'x' typeflag marks a PAX extended header: its "data" is a series of
   # key=value attributes (here, the real long path of the entry that
-  # follows), not file content. A reader that doesn't understand this
-  # would treat 'PaxHeader/entry' as a literal (and bogus) file name.
-  content <- charToRaw("21 path=some/long/path\n")
-  pad_len <- (512 - (length(content) %% 512)) %% 512
+  # follows), not file content.
+  pax_content <- charToRaw(pax_record("path", "some/long/path.txt"))
+  file_content <- charToRaw("hello from pax\n")
+
   tar_path <- tempfile(fileext = ".tar")
   on.exit(unlink(tar_path))
   con <- file(tar_path, "wb")
-  writeBin(make_tar_header("PaxHeader/entry", length(content), type = "x"), con)
-  writeBin(content, con)
-  if (pad_len > 0) writeBin(raw(pad_len), con)
+  write_tar_entry(con, "PaxHeader/entry", pax_content, type = "x")
+  write_tar_entry(con, "short-name.txt", file_content)
+  writeBin(raw(1024), con)
+  close(con)
+
+  archive <- tempfile(fileext = ".tar.zst")
+  on.exit(unlink(archive), add = TRUE)
+  zstd_compress(tar_path, archive)
+
+  exdir <- tempfile()
+  zstd_tar_decompress(archive, exdir)
+  expect_true(file.exists(file.path(exdir, "some/long/path.txt")))
+  expect_false(file.exists(file.path(exdir, "short-name.txt")))
+  expect_identical(readBin(file.path(exdir, "some/long/path.txt"), "raw", length(file_content)), file_content)
+})
+
+test_that("zstd_tar_decompress() applies a PAX 'g' global extended header to later entries", {
+  # A 'g' typeflag marks a global PAX header: its key=value attributes
+  # (here, mtime) apply as defaults to every entry that follows, not just
+  # the next one.
+  mtime <- 1000000000
+  pax_content <- charToRaw(pax_record("mtime", format(mtime, scientific = FALSE)))
+
+  tar_path <- tempfile(fileext = ".tar")
+  on.exit(unlink(tar_path))
+  con <- file(tar_path, "wb")
+  write_tar_entry(con, "PaxHeader/global", pax_content, type = "g")
+  write_tar_entry(con, "a.txt", charToRaw("a\n"))
+  write_tar_entry(con, "b.txt", charToRaw("b\n"))
+  writeBin(raw(1024), con)
+  close(con)
+
+  archive <- tempfile(fileext = ".tar.zst")
+  on.exit(unlink(archive), add = TRUE)
+  zstd_compress(tar_path, archive)
+
+  exdir <- tempfile()
+  zstd_tar_decompress(archive, exdir)
+  expect_identical(as.numeric(file.info(file.path(exdir, "a.txt"))$mtime), mtime)
+  expect_identical(as.numeric(file.info(file.path(exdir, "b.txt"))$mtime), mtime)
+})
+
+test_that("zstd_tar_decompress() warns (but still extracts) on a PAX/ustar size mismatch", {
+  pax_content <- charToRaw(pax_record("size", "999"))
+  file_content <- charToRaw("hello from pax\n")
+
+  tar_path <- tempfile(fileext = ".tar")
+  on.exit(unlink(tar_path))
+  con <- file(tar_path, "wb")
+  write_tar_entry(con, "PaxHeader/entry", pax_content, type = "x")
+  write_tar_entry(con, "c.txt", file_content)
+  writeBin(raw(1024), con)
+  close(con)
+
+  archive <- tempfile(fileext = ".tar.zst")
+  on.exit(unlink(archive), add = TRUE)
+  zstd_compress(tar_path, archive)
+
+  exdir <- tempfile()
+  expect_warning(zstd_tar_decompress(archive, exdir), "size")
+  expect_identical(readBin(file.path(exdir, "c.txt"), "raw", length(file_content)), file_content)
+})
+
+test_that("zstd_tar_decompress() errors clearly on a malformed PAX record", {
+  # missing '=' between key and value
+  pax_content <- charToRaw(pax_raw_record("pathXvalue"))
+
+  tar_path <- tempfile(fileext = ".tar")
+  on.exit(unlink(tar_path))
+  con <- file(tar_path, "wb")
+  write_tar_entry(con, "PaxHeader/entry", pax_content, type = "x")
+  write_tar_entry(con, "d.txt", charToRaw("d\n"))
+  writeBin(raw(1024), con)
+  close(con)
+
+  archive <- tempfile(fileext = ".tar.zst")
+  on.exit(unlink(archive), add = TRUE)
+  zstd_compress(tar_path, archive)
+
+  expect_error(zstd_tar_decompress(archive, tempfile()))
+})
+
+test_that("zstd_tar_decompress() still refuses GNU long name/link headers", {
+  content <- charToRaw("some/long/gnu/path.txt\n")
+
+  tar_path <- tempfile(fileext = ".tar")
+  on.exit(unlink(tar_path))
+  con <- file(tar_path, "wb")
+  write_tar_entry(con, "./GNU-longname", content, type = "L")
+  write_tar_entry(con, "short-name.txt", charToRaw("hello\n"))
   writeBin(raw(1024), con)
   close(con)
 

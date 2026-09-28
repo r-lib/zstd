@@ -32,6 +32,9 @@
  *    strcpy() (which could overflow the fixed-size header fields).
  *  - numeric header fields are now filled with snprintf() instead of
  *    upstream's unchecked sprintf().
+ *  - mtar_header_t's 'owner' field is now 'uid', and a 'gid' field was
+ *    added (parsed from the raw 'group' field, which upstream parsed
+ *    into the checksum but then discarded).
  */
 
 #include <stdio.h>
@@ -170,7 +173,8 @@ static int raw_to_header(mtar_header_t *h, const mtar_raw_header_t *rh) {
 
   /* Load raw header into header */
   sscanf(rh->mode, "%o", &h->mode);
-  sscanf(rh->owner, "%o", &h->owner);
+  sscanf(rh->owner, "%o", &h->uid);
+  sscanf(rh->group, "%o", &h->gid);
   sscanf(rh->size, "%o", &h->size);
   sscanf(rh->mtime, "%o", &h->mtime);
   h->type = rh->type;
@@ -223,7 +227,8 @@ static int header_to_raw(mtar_raw_header_t *rh, const mtar_header_t *h) {
   /* Load header into raw header */
   memset(rh, 0, sizeof(*rh));
   snprintf(rh->mode, sizeof(rh->mode), "%o", h->mode);
-  snprintf(rh->owner, sizeof(rh->owner), "%o", h->owner);
+  snprintf(rh->owner, sizeof(rh->owner), "%o", h->uid);
+  snprintf(rh->group, sizeof(rh->group), "%o", h->gid);
   snprintf(rh->size, sizeof(rh->size), "%o", h->size);
   snprintf(rh->mtime, sizeof(rh->mtime), "%o", h->mtime);
   rh->type = h->type ? h->type : MTAR_TREG;
@@ -445,7 +450,10 @@ int mtar_write_header(mtar_t *tar, const mtar_header_t *h) {
 }
 
 
-int mtar_write_file_header(mtar_t *tar, const char *name, unsigned size) {
+int mtar_write_file_header(
+  mtar_t *tar, const char *name, unsigned size, unsigned mode, unsigned uid,
+  unsigned gid
+) {
   mtar_header_t h;
   int err;
   /* Build header */
@@ -456,13 +464,17 @@ int mtar_write_file_header(mtar_t *tar, const char *name, unsigned size) {
   }
   h.size = size;
   h.type = MTAR_TREG;
-  h.mode = 0664;
+  h.mode = mode;
+  h.uid = uid;
+  h.gid = gid;
   /* Write header */
   return mtar_write_header(tar, &h);
 }
 
 
-int mtar_write_dir_header(mtar_t *tar, const char *name) {
+int mtar_write_dir_header(
+  mtar_t *tar, const char *name, unsigned mode, unsigned uid, unsigned gid
+) {
   mtar_header_t h;
   int err;
   /* Build header */
@@ -472,7 +484,9 @@ int mtar_write_dir_header(mtar_t *tar, const char *name) {
     return err;
   }
   h.type = MTAR_TDIR;
-  h.mode = 0775;
+  h.mode = mode;
+  h.uid = uid;
+  h.gid = gid;
   /* Write header */
   return mtar_write_header(tar, &h);
 }
