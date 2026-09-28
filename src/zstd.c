@@ -6172,12 +6172,12 @@ __attribute__((__unused__))
 #endif
 
 #if defined(__clang__) && __clang_major__ >= 5
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
+# pragma clang diagnostic push
+# pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
 #endif
 ZSTD_customMem const ZSTD_defaultCMem = { NULL, NULL, NULL };  /**< this constant defers to stdlib's functions */
 #if defined(__clang__) && __clang_major__ >= 5
-#pragma clang diagnostic pop
+# pragma clang diagnostic pop
 #endif
 
 ZSTDLIB_STATIC_API ZSTD_CCtx*    ZSTD_createCCtx_advanced(ZSTD_customMem customMem);
@@ -13055,7 +13055,7 @@ XXH3_len_129to240_64b(const xxh_u8* XXH_RESTRICT input, size_t len,
          * _actually works_ because it is a loop vectorization instead of an
          * SLP vectorization.
          */
-        #pragma clang loop vectorize(disable)
+        # pragma clang loop vectorize(disable)
 #endif
         for (i=8 ; i < nbRounds; i++) {
             /*
@@ -48407,7 +48407,7 @@ ZDICTLIB_STATIC_API size_t ZDICT_optimizeTrainFromBuffer_cover(
 
 /*- Compiler specifics -*/
 #ifdef __clang__
-#pragma clang diagnostic ignored "-Wshorten-64-to-32"
+# pragma clang diagnostic ignored "-Wshorten-64-to-32"
 #endif
 
 #if defined(_MSC_VER)
@@ -49947,13 +49947,13 @@ note:
     {
         buf = SA + m;
         c0 = ALPHABET_SIZE - 2, c1 = ALPHABET_SIZE - 1, j = m;
-#pragma omp parallel default(shared) private(bufsize, curbuf, k, l, d0, d1)
+# pragma omp parallel default(shared) private(bufsize, curbuf, k, l, d0, d1)
         {
           bufsize = (n - (2 * m)) / omp_get_num_threads();
           curbuf = buf + omp_get_thread_num() * bufsize;
           k = 0;
           for(;;) {
-            #pragma omp critical(sssort_lock)
+            # pragma omp critical(sssort_lock)
             {
               if(0 < (l = j)) {
                 d0 = c0, d1 = c1;

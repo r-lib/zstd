@@ -1874,12 +1874,12 @@ __attribute__((__unused__))
 #endif
 
 #if defined(__clang__) && __clang_major__ >= 5
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
+# pragma clang diagnostic push
+# pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
 #endif
 ZSTD_customMem const ZSTD_defaultCMem = { NULL, NULL, NULL };  /**< this constant defers to stdlib's functions */
 #if defined(__clang__) && __clang_major__ >= 5
-#pragma clang diagnostic pop
+# pragma clang diagnostic pop
 #endif
 
 ZSTDLIB_STATIC_API ZSTD_CCtx*    ZSTD_createCCtx_advanced(ZSTD_customMem customMem);
