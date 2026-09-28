@@ -4,7 +4,7 @@
 \alias{zstd_compress}
 \title{Compress a raw vector with Zstandard}
 \usage{
-zstd_compress(x, level = zstd_default_clevel())
+zstd_compress(x, level = zstd_default_clevel(), dict = NULL)
 }
 \arguments{
 \item{x}{A raw vector to compress.}
@@ -12,6 +12,12 @@ zstd_compress(x, level = zstd_default_clevel())
 \item{level}{Integer compression level. Defaults to
 \code{\link[=zstd_default_clevel]{zstd_default_clevel()}}. Valid range is \code{\link[=zstd_min_clevel]{zstd_min_clevel()}} to
 \code{\link[=zstd_max_clevel]{zstd_max_clevel()}}.}
+
+\item{dict}{\code{NULL}, or a raw vector containing a dictionary (as created
+by \code{\link[=zstd_train_dict]{zstd_train_dict()}}, or any raw content dictionary). Using a
+dictionary can substantially improve the compression ratio of small,
+similar inputs. The same dictionary must be passed to
+\code{\link[=zstd_decompress]{zstd_decompress()}}.}
 }
 \value{
 A raw vector: the compressed data.

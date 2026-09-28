@@ -4,10 +4,13 @@
 \alias{zstd_decompress}
 \title{Decompress a Zstandard-compressed raw vector}
 \usage{
-zstd_decompress(x)
+zstd_decompress(x, dict = NULL)
 }
 \arguments{
 \item{x}{A raw vector of Zstandard-compressed data (a single frame).}
+
+\item{dict}{\code{NULL}, or a raw vector containing the dictionary that was
+used to compress \code{x}. See \code{\link[=zstd_compress]{zstd_compress()}}.}
 }
 \value{
 A raw vector: the decompressed data.

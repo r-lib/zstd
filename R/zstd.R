@@ -4,15 +4,23 @@
 #' @param level Integer compression level. Defaults to
 #'   [zstd_default_clevel()]. Valid range is [zstd_min_clevel()] to
 #'   [zstd_max_clevel()].
+#' @param dict `NULL`, or a raw vector containing a dictionary (as created
+#'   by [zstd_train_dict()], or any raw content dictionary). Using a
+#'   dictionary can substantially improve the compression ratio of small,
+#'   similar inputs. The same dictionary must be passed to
+#'   [zstd_decompress()].
 #' @return A raw vector: the compressed data.
 #' @export
 #' @examples
 #' x <- charToRaw(paste(rep("hello world ", 1000), collapse = ""))
 #' cmp <- zstd_compress(x)
 #' identical(zstd_decompress(cmp), x)
-zstd_compress <- function(x, level = zstd_default_clevel()) {
+zstd_compress <- function(x, level = zstd_default_clevel(), dict = NULL) {
   if (!is.raw(x)) {
     stop("`x` must be a raw vector", call. = FALSE)
+  }
+  if (!is.null(dict) && !is.raw(dict)) {
+    stop("`dict` must be a raw vector or NULL", call. = FALSE)
   }
   level <- as.integer(level)
   if (level < zstd_min_clevel() || level > zstd_max_clevel()) {
@@ -22,22 +30,59 @@ zstd_compress <- function(x, level = zstd_default_clevel()) {
       call. = FALSE
     )
   }
-  .Call(zstd_compress_, x, level)
+  .Call(zstd_compress_, x, level, dict)
 }
 
 #' Decompress a Zstandard-compressed raw vector
 #'
 #' @param x A raw vector of Zstandard-compressed data (a single frame).
+#' @param dict `NULL`, or a raw vector containing the dictionary that was
+#'   used to compress `x`. See [zstd_compress()].
 #' @return A raw vector: the decompressed data.
 #' @export
 #' @examples
 #' x <- charToRaw("hello world")
 #' zstd_decompress(zstd_compress(x))
-zstd_decompress <- function(x) {
+zstd_decompress <- function(x, dict = NULL) {
   if (!is.raw(x)) {
     stop("`x` must be a raw vector", call. = FALSE)
   }
-  .Call(zstd_decompress_, x)
+  if (!is.null(dict) && !is.raw(dict)) {
+    stop("`dict` must be a raw vector or NULL", call. = FALSE)
+  }
+  .Call(zstd_decompress_, x, dict)
+}
+
+#' Train a Zstandard dictionary from sample data
+#'
+#' Dictionaries improve the compression ratio of many small, similar
+#' inputs, such as JSON records that share the same structure. Training
+#' needs a few hundred to a few thousand representative samples: aim for
+#' total sample size about 100x the target dictionary size.
+#'
+#' @param samples A list of raw vectors, representative of the data that
+#'   will be compressed with the dictionary.
+#' @param size Target dictionary size, in bytes. Defaults to 112640 (110KB),
+#'   the same default as the `zstd` command line tool.
+#' @return A raw vector: the trained dictionary. Pass it as the `dict`
+#'   argument of [zstd_compress()] and [zstd_decompress()].
+#' @export
+#' @examples
+#' samples <- lapply(1:100, function(i) {
+#'   charToRaw(paste0('{"id":', i, ',"name":"sample"}'))
+#' })
+#' dict <- zstd_train_dict(samples, size = 1000)
+#' cmp <- zstd_compress(samples[[1]], dict = dict)
+#' identical(zstd_decompress(cmp, dict = dict), samples[[1]])
+zstd_train_dict <- function(samples, size = 112640L) {
+  if (!is.list(samples) || !all(vapply(samples, is.raw, logical(1)))) {
+    stop("`samples` must be a list of raw vectors", call. = FALSE)
+  }
+  size <- as.integer(size)
+  if (size <= 0) {
+    stop("`size` must be a positive integer", call. = FALSE)
+  }
+  .Call(zstd_train_dict_, samples, size)
 }
 
 #' Get information about a Zstandard-compressed file
