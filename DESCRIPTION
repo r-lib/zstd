@@ -1,10 +1,21 @@
 Package: zstd
-Title: What the Package Does (One Line, Title Case)
+Title: Zstandard Compression
 Version: 0.0.0.9000
-Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
+Authors@R: c(
+    person("Gábor", "Csárdi", , "csardi.gabor@gmail.com", role = c("aut", "cre")),
+    person("Posit Software, PBC", role = c("cph", "fnd"),
+           comment = c(ROR = "03wc8by49")),
+    person("Yann", "Collet", role = c("aut"), comment = "Zstandard author"),
+    person("Meta Platforms, Inc. and affiliates.", role = "cph",
+           comment = "Zstandard copyright holder")
+  )
+Description: Zstandard compression and decompression.
 License: MIT + file LICENSE
+Copyright: This package includes code from the 'Zstandard' library
+        owned by Meta Platforms, Inc. and affiliates. and created by
+        Yann Collet.  See file 'inst/COPYRIGHTS' for details.
+URL: https://github.com/r-lib/zstd
+BugReports: https://github.com/r-lib/zstd/issues
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 8.1.0
