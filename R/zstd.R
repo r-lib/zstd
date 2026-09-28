@@ -422,14 +422,15 @@ zstd_tar_compress <- function(
     # Entry names are stored relative to each path's own parent directory
     # (like `tar cf x.tar dir` does), so absolute paths (e.g. from
     # tempfile()) don't leak local filesystem structure into the archive.
-    base <- dirname(files[i])
+    base <- gsub("\\", "/", dirname(files[i]), fixed = TRUE)
     relative_to_base <- function(p) {
+      p <- gsub("\\", "/", p, fixed = TRUE)
       if (identical(base, ".")) {
         return(p)
       }
       base_len <- nchar(base)
       is_prefixed <- substr(p, 1, base_len) == base &
-        substr(p, base_len + 1, base_len + 1) %in% c("/", "\\")
+        substr(p, base_len + 1, base_len + 1) == "/"
       ifelse(is_prefixed, substring(p, base_len + 2), p)
     }
 
