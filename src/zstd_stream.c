@@ -7,21 +7,36 @@
 #define ZSTD_STATIC_LINKING_ONLY
 #include "zstd.h"
 
+#ifdef _WIN32
+#include <windows.h>
+static FILE *zstd_fopen(const char *path_utf8, const char *mode) {
+  int wlen = MultiByteToWideChar(CP_UTF8, 0, path_utf8, -1, NULL, 0);
+  if (wlen == 0) return NULL;
+  wchar_t *wpath = (wchar_t *) R_alloc(wlen, sizeof(wchar_t));
+  MultiByteToWideChar(CP_UTF8, 0, path_utf8, -1, wpath, wlen);
+  wchar_t wmode[4];
+  MultiByteToWideChar(CP_UTF8, 0, mode, -1, wmode, 4);
+  return _wfopen(wpath, wmode);
+}
+#else
+#define zstd_fopen fopen
+#endif
+
 SEXP zstd_compress_file_(SEXP input, SEXP output, SEXP level, SEXP dict) {
   if (TYPEOF(input) != STRSXP) Rf_error("`input` must be a string");
   if (TYPEOF(output) != STRSXP) Rf_error("`output` must be a string");
   if (dict != R_NilValue && TYPEOF(dict) != RAWSXP) {
     Rf_error("`dict` must be a raw vector or NULL");    // # nocov
   }
-  const char *input_path = CHAR(STRING_ELT(input, 0));
-  const char *output_path = CHAR(STRING_ELT(output, 0));
+  const char *input_path = Rf_translateCharUTF8(STRING_ELT(input, 0));
+  const char *output_path = Rf_translateCharUTF8(STRING_ELT(output, 0));
   int lvl = Rf_asInteger(level);
 
-  FILE *fin = fopen(input_path, "rb");
+  FILE *fin = zstd_fopen(input_path, "rb");
   if (fin == NULL) {
     Rf_error("Cannot open input file '%s': %s", input_path, strerror(errno));
   }
-  FILE *fout = fopen(output_path, "wb");
+  FILE *fout = zstd_fopen(output_path, "wb");
   if (fout == NULL) {
     fclose(fin);
     Rf_error("Cannot open output file '%s': %s", output_path, strerror(errno));
@@ -117,14 +132,14 @@ SEXP zstd_decompress_file_(SEXP input, SEXP output, SEXP dict) {
   if (dict != R_NilValue && TYPEOF(dict) != RAWSXP) {
     Rf_error("`dict` must be a raw vector or NULL");    // # nocov
   }
-  const char *input_path = CHAR(STRING_ELT(input, 0));
-  const char *output_path = CHAR(STRING_ELT(output, 0));
+  const char *input_path = Rf_translateCharUTF8(STRING_ELT(input, 0));
+  const char *output_path = Rf_translateCharUTF8(STRING_ELT(output, 0));
 
-  FILE *fin = fopen(input_path, "rb");
+  FILE *fin = zstd_fopen(input_path, "rb");
   if (fin == NULL) {
     Rf_error("Cannot open input file '%s': %s", input_path, strerror(errno));
   }
-  FILE *fout = fopen(output_path, "wb");
+  FILE *fout = zstd_fopen(output_path, "wb");
   if (fout == NULL) {
     fclose(fin);
     Rf_error("Cannot open output file '%s': %s", output_path, strerror(errno));
