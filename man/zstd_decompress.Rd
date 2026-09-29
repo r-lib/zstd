@@ -35,5 +35,6 @@ identical(
   readBin(src, "raw", file.size(src)),
   readBin(src2, "raw", file.size(src2))
 )
+unlink(c(src, dst, src2))
 \dontshow{\}) # examplesIf}
 }

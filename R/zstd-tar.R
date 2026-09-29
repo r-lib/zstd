@@ -32,6 +32,7 @@
 #' exdir <- tempfile()
 #' zstd_tar_decompress(archive, exdir)
 #' readLines(file.path(exdir, basename(dir), "subdir", "b.txt"))
+#' unlink(c(dir, archive, exdir), recursive = TRUE)
 zstd_tar_compress <- function(
   files,
   output,
@@ -157,6 +158,7 @@ tar_relative_path <- function(paths, base) {
 #' exdir <- tempfile()
 #' zstd_tar_decompress(archive, exdir)
 #' readLines(file.path(exdir, basename(dir), "a.txt"))
+#' unlink(c(dir, archive, exdir), recursive = TRUE)
 zstd_tar_decompress <- function(input, exdir = ".", dict = NULL) {
   input <- as_existing_file(input)
   exdir <- as_string(exdir)

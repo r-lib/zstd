@@ -22,6 +22,7 @@
 #'   readBin(src, "raw", file.size(src)),
 #'   readBin(src2, "raw", file.size(src2))
 #' )
+#' unlink(c(src, dst, src2))
 zstd_compress <- function(
   input,
   output,
@@ -89,6 +90,7 @@ zstd_compress <- function(
 #'   readBin(src, "raw", file.size(src)),
 #'   readBin(src2, "raw", file.size(src2))
 #' )
+#' unlink(c(src, dst, src2))
 zstd_decompress <- function(input, output, dict = NULL) {
   input <- as_existing_file(input)
   output <- as_string(output)

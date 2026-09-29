@@ -26,6 +26,7 @@
 #' tmp <- tempfile()
 #' writeBin(zstd_mem_compress(charToRaw("hello world")), tmp)
 #' zstd_info(tmp)
+#' unlink(tmp)
 zstd_info <- function(path) {
   path <- as_string(path)
   files <- Sys.glob(path)

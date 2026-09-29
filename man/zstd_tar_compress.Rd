@@ -92,5 +92,6 @@ zstd_tar_compress(dir, archive)
 exdir <- tempfile()
 zstd_tar_decompress(archive, exdir)
 readLines(file.path(exdir, basename(dir), "subdir", "b.txt"))
+unlink(c(dir, archive, exdir), recursive = TRUE)
 \dontshow{\}) # examplesIf}
 }

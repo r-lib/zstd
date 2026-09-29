@@ -39,5 +39,6 @@ appear in the file.
 tmp <- tempfile()
 writeBin(zstd_mem_compress(charToRaw("hello world")), tmp)
 zstd_info(tmp)
+unlink(tmp)
 \dontshow{\}) # examplesIf}
 }
