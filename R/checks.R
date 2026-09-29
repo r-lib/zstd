@@ -31,6 +31,13 @@ as_string <- function(
   ))
 }
 
+# A path that is passed to C code, so `~` must be expanded here, since
+# fopen() does not do it.
+as_path <- function(x, arg = caller_arg(x), call = caller_env()) {
+  force(arg)
+  path.expand(as_string(x, arg = arg, call = call))
+}
+
 as_existing_file <- function(x, arg = caller_arg(x), call = caller_env()) {
   force(arg)
   x <- as_string(x, arg = arg, call = call)
@@ -41,7 +48,7 @@ as_existing_file <- function(x, arg = caller_arg(x), call = caller_env()) {
     ))
   }
   if (file.exists(x)) {
-    return(x)
+    return(path.expand(x))
   }
 
   stop(cnd(
@@ -179,7 +186,7 @@ format_list <- function(x, max = 5) {
 
 as_files <- function(x, arg = caller_arg(x), call = caller_env()) {
   if (is.character(x) && length(x) > 0 && !anyNA(x) && all(file.exists(x))) {
-    return(x)
+    return(path.expand(x))
   }
 
   if (!is.character(x) || length(x) == 0) {

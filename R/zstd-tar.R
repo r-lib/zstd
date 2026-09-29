@@ -48,7 +48,7 @@ zstd_tar_compress <- function(
 ) {
   files <- as_files(files)
   info <- file.info(files)
-  output <- as_string(output)
+  output <- as_path(output)
   dict <- as_raw(dict, null = TRUE)
   level <- as_clevel(level)
   p <- as_common_cparams(
@@ -161,7 +161,7 @@ tar_relative_path <- function(paths, base) {
 #' unlink(c(dir, archive, exdir), recursive = TRUE)
 zstd_tar_decompress <- function(input, exdir = ".", dict = NULL) {
   input <- as_existing_file(input)
-  exdir <- as_string(exdir)
+  exdir <- as_path(exdir)
   dict <- as_raw(dict, null = TRUE)
   if (!dir.exists(exdir)) {
     dir.create(exdir, recursive = TRUE)

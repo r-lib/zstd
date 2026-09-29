@@ -28,7 +28,7 @@
 #' zstd_info(tmp)
 #' unlink(tmp)
 zstd_info <- function(path) {
-  path <- as_string(path)
+  path <- as_path(path)
   files <- Sys.glob(path)
   if (length(files) == 0) {
     stop(cnd("No files match: '{path}'."))

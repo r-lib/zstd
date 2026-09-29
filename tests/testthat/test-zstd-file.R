@@ -105,3 +105,26 @@ test_that("zstd_decompress() errors on corrupt/truncated input", {
   writeBin(truncated, cmp2)
   expect_error(zstd_decompress(cmp2, tempfile()))
 })
+
+test_that("zstd_compress()/zstd_decompress() expand `~` in paths", {
+  skip_on_os("windows")
+  home <- tempfile()
+  dir.create(home)
+  old <- Sys.getenv("HOME")
+  on.exit({
+    Sys.setenv(HOME = old)
+    unlink(home, recursive = TRUE)
+  })
+  Sys.setenv(HOME = home)
+
+  x <- charToRaw(paste(rep("the quick brown fox ", 500), collapse = ""))
+  writeBin(x, file.path(home, "src"))
+
+  expect_identical(
+    zstd_compress("~/src", "~/cmp"),
+    file.path(path.expand("~"), "cmp")
+  )
+  zstd_decompress("~/cmp", "~/out")
+  out <- file.path(home, "out")
+  expect_identical(readBin(out, "raw", file.size(out)), x)
+})

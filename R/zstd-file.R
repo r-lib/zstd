@@ -37,7 +37,7 @@ zstd_compress <- function(
   long_distance_matching = NULL
 ) {
   input <- as_existing_file(input)
-  output <- as_string(output)
+  output <- as_path(output)
   dict <- as_raw(dict, null = TRUE)
   level <- as_clevel(level)
   p <- as_common_cparams(
@@ -93,7 +93,7 @@ zstd_compress <- function(
 #' unlink(c(src, dst, src2))
 zstd_decompress <- function(input, output, dict = NULL) {
   input <- as_existing_file(input)
-  output <- as_string(output)
+  output <- as_path(output)
   dict <- as_raw(dict, null = TRUE)
   .Call(zstd_decompress_file_, input, output, dict)
   invisible(output)

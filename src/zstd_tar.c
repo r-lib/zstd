@@ -13,7 +13,7 @@
 #ifdef _WIN32
 #include <direct.h>
 #include <sys/stat.h>
-#include <sys/utime.h>
+#include <windows.h>
 /* All paths are UTF-8 (from Rf_translateCharUTF8()), so on Windows use
  * the wide-char APIs, like zstd_fopen() does, instead of the narrow ones,
  * which would interpret them in the current codepage. */
@@ -29,9 +29,24 @@ static int zstd_stat(const char* path, struct _stat* st) {
   wchar_t* wpath = zstd_utf8_to_wide(path);
   return wpath == NULL ? -1 : _wstat(wpath, st);
 }
-static int zstd_utime(const char* path, struct _utimbuf* ut) {
+/* _wutime() can't open directories, so use SetFileTime() on a handle
+ * opened with FILE_FLAG_BACKUP_SEMANTICS, which works for both files and
+ * directories. */
+static int zstd_utime(const char* path, unsigned mtime) {
   wchar_t* wpath = zstd_utf8_to_wide(path);
-  return wpath == NULL ? -1 : _wutime(wpath, ut);
+  if (wpath == NULL) return -1;
+  HANDLE h = CreateFileW(wpath, FILE_WRITE_ATTRIBUTES,
+                         FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                         NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+  if (h == INVALID_HANDLE_VALUE) return -1;
+  /* FILETIME counts 100ns intervals since 1601-01-01 */
+  ULONGLONG t = ((ULONGLONG)mtime + 11644473600ULL) * 10000000ULL;
+  FILETIME ft;
+  ft.dwLowDateTime = (DWORD)t;
+  ft.dwHighDateTime = (DWORD)(t >> 32);
+  BOOL ok = SetFileTime(h, NULL, &ft, &ft);
+  CloseHandle(h);
+  return ok ? 0 : -1;
 }
 #else
 #include <sys/stat.h>
@@ -82,10 +97,7 @@ static void get_file_attrs(const char* path, unsigned* mode, unsigned* uid,
 static void apply_attrs(const char* path, unsigned mtime, unsigned uid,
                         unsigned gid, int* chown_failed) {
 #ifdef _WIN32
-  struct _utimbuf ut;
-  ut.actime = (time_t)mtime;
-  ut.modtime = (time_t)mtime;
-  if (zstd_utime(path, &ut) != 0) *chown_failed = 1;
+  if (zstd_utime(path, mtime) != 0) *chown_failed = 1;
 #else
   struct utimbuf ut;
   ut.actime = (time_t)mtime;
