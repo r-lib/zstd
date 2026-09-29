@@ -45,7 +45,7 @@ appear in the file."><!-- mathjax --><script src="https://cdnjs.cloudflare.com/a
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Get information about a Zstandard-compressed file</h1>
-    <small class="dont-index">Source: <a href="https://github.com/r-lib/zstd/blob/main/R/zstd.R" class="external-link"><code>R/zstd.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/r-lib/zstd/blob/main/R/zstd-info.R" class="external-link"><code>R/zstd-info.R</code></a></small>
     <div class="hidden name"><code>zstd_info.Rd</code></div>
     </div>
 
@@ -92,7 +92,7 @@ for skippable frames.</p></li>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/readBin.html" class="external-link">writeBin</a></span><span class="op">(</span><span class="fu"><a href="zstd_mem_compress.html">zstd_mem_compress</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rawConversion.html" class="external-link">charToRaw</a></span><span class="op">(</span><span class="st">"hello world"</span><span class="op">)</span><span class="op">)</span>, <span class="va">tmp</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">zstd_info</span><span class="op">(</span><span class="va">tmp</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                               path  type compressed_size content_size</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 /tmp/RtmpVzk84f/file18b97d00c2fa frame              20           11</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 /tmp/RtmpfTX6y5/file18bd683da710 frame              20           11</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   window_size dict_id checksum</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1          11       0    FALSE</span>
 </code></pre></div>
