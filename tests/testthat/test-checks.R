@@ -19,6 +19,7 @@ test_that("as_existing_file", {
   expect_snapshot(error = TRUE, {
     f(1L)
     f("does-not-exist")
+    f(".")
   })
 })
 
@@ -89,8 +90,12 @@ test_that("as_files", {
   expect_snapshot(error = TRUE, {
     f(character())
     f(NA_character_)
+    f(c("a", NA, "b", NA))
+    f(rep(NA_character_, 10))
     f(1L)
     f("does-not-exist")
+    f(c(tempdir(), "does-not-exist", "does-not-exist-2"))
+    f(paste0("does-not-exist-", 1:10))
   })
 })
 
@@ -104,9 +109,15 @@ test_that("as_samples", {
   expect_equal(f(tmp), s)
   expect_snapshot(error = TRUE, {
     f(NA_character_)
+    f(c(tmp, NA, NA))
     f("does-not-exist")
+    f(c("does-not-exist", "does-not-exist-2"))
+    f(".")
+    f(c(".", ".."))
     f(1:3)
     f(list("a"))
+    f(list(as.raw(1), 1:3))
+    f(list("foo", "bar"))
   })
 })
 

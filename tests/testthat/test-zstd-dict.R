@@ -45,7 +45,7 @@ test_that("zstd_train_dict() accepts file paths", {
 
 test_that("zstd_train_dict() validates its arguments", {
   expect_error(zstd_train_dict("does-not-exist"), "File does not exist")
-  expect_error(zstd_train_dict(tempdir()), "File does not exist")
+  expect_error(zstd_train_dict(tempdir()), "not directories")
   expect_error(zstd_train_dict(NA_character_))
   expect_error(zstd_train_dict(1:3))
   expect_error(zstd_train_dict(list("not raw")))

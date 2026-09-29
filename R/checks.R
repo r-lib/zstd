@@ -34,6 +34,12 @@ as_string <- function(
 as_existing_file <- function(x, arg = caller_arg(x), call = caller_env()) {
   force(arg)
   x <- as_string(x, arg = arg, call = call)
+  if (dir.exists(x)) {
+    stop(cnd(
+      call = call,
+      "Invalid argument: `{arg}` must be a file, but it is a directory: '{x}'."
+    ))
+  }
   if (file.exists(x)) {
     return(x)
   }
@@ -166,52 +172,107 @@ as_choice <- function(
   }
 }
 
-as_files <- function(x, arg = caller_arg(x), call = caller_env()) {
-  if (!is.character(x) || length(x) == 0 || anyNA(x)) {
-    stop(cnd(
-      call = call,
-      "Invalid argument: `{arg}` must be a non-empty character vector \\
-       without `NA` values, but it is {typename(x)}."
-    ))
-  }
-  missing <- x[is.na(file.info(x)$isdir)]
-  if (length(missing) > 0) {
-    stop(cnd(
-      call = call,
-      "Invalid argument: all files in `{arg}` must exist. \\
-       File does not exist: '{missing[1]}'."
-    ))
-  }
-  x
+format_list <- function(x, max = 5) {
+  more <- if (length(x) > max) paste0(" and ", length(x) - max, " more") else ""
+  paste0(paste(x[seq_len(min(length(x), max))], collapse = ", "), more)
 }
 
-as_samples <- function(x, arg = caller_arg(x), call = caller_env()) {
-  if (is.character(x)) {
-    if (anyNA(x)) {
-      stop(cnd(
-        call = call,
-        "Invalid argument: `{arg}` must not contain `NA` file paths."
-      ))
-    }
-    missing <- x[!file.exists(x) | dir.exists(x)]
-    if (length(missing) > 0) {
-      stop(cnd(
-        call = call,
-        "Invalid argument: all files in `{arg}` must exist. \\
-         File does not exist: '{missing[1]}'."
-      ))
-    }
-    return(lapply(x, function(path) readBin(path, "raw", file.size(path))))
-  }
-  if (is.list(x) && all(vapply(x, is.raw, logical(1)))) {
+as_files <- function(x, arg = caller_arg(x), call = caller_env()) {
+  if (is.character(x) && length(x) > 0 && !anyNA(x) && all(file.exists(x))) {
     return(x)
   }
 
+  if (!is.character(x) || length(x) == 0) {
+    stop(cnd(
+      call = call,
+      "Invalid argument: `{arg}` must be a non-empty character vector, \\
+       but it is {typename(x)}."
+    ))
+  } else if (anyNA(x)) {
+    stop_na_paths(x, arg = arg, call = call)
+  } else {
+    stop_missing_files(x[!file.exists(x)], arg = arg, call = call)
+  }
+}
+
+as_samples <- function(x, arg = caller_arg(x), call = caller_env()) {
+  if (is.list(x) && all(vapply(x, is.raw, logical(1)))) {
+    return(x)
+  }
+  if (is.character(x) && !anyNA(x) && all(file.exists(x) & !dir.exists(x))) {
+    return(lapply(x, function(path) readBin(path, "raw", file.size(path))))
+  }
+
+  if (is.list(x)) {
+    bad <- which(!vapply(x, is.raw, logical(1)))
+    if (length(bad) == 1) {
+      stop(cnd(
+        call = call,
+        "Invalid argument: `{arg}` must be a list of raw vectors, \\
+         but element {bad} is {typename(x[[bad]])}."
+      ))
+    } else {
+      bpos <- format_list(bad)
+      stop(cnd(
+        call = call,
+        "Invalid argument: `{arg}` must be a list of raw vectors, \\
+         but {length(bad)} elements are not, at positions {bpos}."
+      ))
+    }
+  } else if (!is.character(x)) {
+    stop(cnd(
+      call = call,
+      "Invalid argument: `{arg}` must be a list of raw vectors or a \\
+       character vector of file paths, but it is {typename(x)}."
+    ))
+  } else if (anyNA(x)) {
+    stop_na_paths(x, arg = arg, call = call)
+  } else if (!all(file.exists(x))) {
+    stop_missing_files(x[!file.exists(x)], arg = arg, call = call)
+  } else {
+    dirs <- x[dir.exists(x)]
+    if (length(dirs) == 1) {
+      stop(cnd(
+        call = call,
+        "Invalid argument: `{arg}` must contain files, not directories. \\
+         This is a directory: '{dirs}'."
+      ))
+    } else {
+      cdirs <- format_list(paste0("'", dirs, "'"))
+      stop(cnd(
+        call = call,
+        "Invalid argument: `{arg}` must contain files, not directories. \\
+         These are directories: {cdirs}."
+      ))
+    }
+  }
+}
+
+stop_na_paths <- function(x, arg, call) {
+  napos <- format_list(which(is.na(x)))
   stop(cnd(
     call = call,
-    "Invalid argument: `{arg}` must be a list of raw vectors or a character \\
-     vector of file paths, but it is {typename(x)}."
+    "Invalid argument: `{arg}` must not contain `NA` values. \\
+     It has `NA` at {if (sum(is.na(x)) == 1) 'position' else 'positions'} \\
+     {napos}."
   ))
+}
+
+stop_missing_files <- function(missing, arg, call) {
+  if (length(missing) == 1) {
+    stop(cnd(
+      call = call,
+      "Invalid argument: all files in `{arg}` must exist. \\
+       File does not exist: '{missing}'."
+    ))
+  } else {
+    mfiles <- format_list(paste0("'", missing, "'"))
+    stop(cnd(
+      call = call,
+      "Invalid argument: all files in `{arg}` must exist. \\
+       {length(missing)} files do not exist: {mfiles}."
+    ))
+  }
 }
 
 as_common_cparams <- function(

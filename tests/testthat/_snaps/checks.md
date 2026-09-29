@@ -33,6 +33,11 @@
     Condition
       Error in `f()`:
       ! Invalid argument: `x` must be an existing file. File does not exist: 'does-not-exist'.
+    Code
+      f(".")
+    Condition
+      Error in `f()`:
+      ! Invalid argument: `x` must be a file, but it is a directory: '.'.
 
 # as_raw
 
@@ -145,22 +150,42 @@
       f(character())
     Condition
       Error in `f()`:
-      ! Invalid argument: `x` must be a non-empty character vector without `NA` values, but it is an empty character vector.
+      ! Invalid argument: `x` must be a non-empty character vector, but it is an empty character vector.
     Code
       f(NA_character_)
     Condition
       Error in `f()`:
-      ! Invalid argument: `x` must be a non-empty character vector without `NA` values, but it is a character `NA`.
+      ! Invalid argument: `x` must not contain `NA` values. It has `NA` at position 1.
+    Code
+      f(c("a", NA, "b", NA))
+    Condition
+      Error in `f()`:
+      ! Invalid argument: `x` must not contain `NA` values. It has `NA` at positions 2, 4.
+    Code
+      f(rep(NA_character_, 10))
+    Condition
+      Error in `f()`:
+      ! Invalid argument: `x` must not contain `NA` values. It has `NA` at positions 1, 2, 3, 4, 5 and 5 more.
     Code
       f(1L)
     Condition
       Error in `f()`:
-      ! Invalid argument: `x` must be a non-empty character vector without `NA` values, but it is an integer.
+      ! Invalid argument: `x` must be a non-empty character vector, but it is an integer.
     Code
       f("does-not-exist")
     Condition
       Error in `f()`:
       ! Invalid argument: all files in `x` must exist. File does not exist: 'does-not-exist'.
+    Code
+      f(c(tempdir(), "does-not-exist", "does-not-exist-2"))
+    Condition
+      Error in `f()`:
+      ! Invalid argument: all files in `x` must exist. 2 files do not exist: 'does-not-exist', 'does-not-exist-2'.
+    Code
+      f(paste0("does-not-exist-", 1:10))
+    Condition
+      Error in `f()`:
+      ! Invalid argument: all files in `x` must exist. 10 files do not exist: 'does-not-exist-1', 'does-not-exist-2', 'does-not-exist-3', 'does-not-exist-4', 'does-not-exist-5' and 5 more.
 
 # as_samples
 
@@ -168,12 +193,32 @@
       f(NA_character_)
     Condition
       Error in `f()`:
-      ! Invalid argument: `x` must not contain `NA` file paths.
+      ! Invalid argument: `x` must not contain `NA` values. It has `NA` at position 1.
+    Code
+      f(c(tmp, NA, NA))
+    Condition
+      Error in `f()`:
+      ! Invalid argument: `x` must not contain `NA` values. It has `NA` at positions 2, 3.
     Code
       f("does-not-exist")
     Condition
       Error in `f()`:
       ! Invalid argument: all files in `x` must exist. File does not exist: 'does-not-exist'.
+    Code
+      f(c("does-not-exist", "does-not-exist-2"))
+    Condition
+      Error in `f()`:
+      ! Invalid argument: all files in `x` must exist. 2 files do not exist: 'does-not-exist', 'does-not-exist-2'.
+    Code
+      f(".")
+    Condition
+      Error in `f()`:
+      ! Invalid argument: `x` must contain files, not directories. This is a directory: '.'.
+    Code
+      f(c(".", ".."))
+    Condition
+      Error in `f()`:
+      ! Invalid argument: `x` must contain files, not directories. These are directories: '.', '..'.
     Code
       f(1:3)
     Condition
@@ -183,7 +228,17 @@
       f(list("a"))
     Condition
       Error in `f()`:
-      ! Invalid argument: `x` must be a list of raw vectors or a character vector of file paths, but it is a list.
+      ! Invalid argument: `x` must be a list of raw vectors, but element 1 is a string.
+    Code
+      f(list(as.raw(1), 1:3))
+    Condition
+      Error in `f()`:
+      ! Invalid argument: `x` must be a list of raw vectors, but element 2 is an integer vector.
+    Code
+      f(list("foo", "bar"))
+    Condition
+      Error in `f()`:
+      ! Invalid argument: `x` must be a list of raw vectors, but 2 elements are not, at positions 1, 2.
 
 # errors name the user facing function
 
