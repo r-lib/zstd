@@ -10,11 +10,17 @@
 
 #ifdef _WIN32
 #include <windows.h>
-FILE* zstd_fopen(const char* path_utf8, const char* mode) {
-  int wlen = MultiByteToWideChar(CP_UTF8, 0, path_utf8, -1, NULL, 0);
+wchar_t* zstd_utf8_to_wide(const char* str_utf8) {
+  int wlen = MultiByteToWideChar(CP_UTF8, 0, str_utf8, -1, NULL, 0);
   if (wlen == 0) return NULL;
-  wchar_t* wpath = (wchar_t*)R_alloc(wlen, sizeof(wchar_t));
-  MultiByteToWideChar(CP_UTF8, 0, path_utf8, -1, wpath, wlen);
+  wchar_t* wstr = (wchar_t*)R_alloc(wlen, sizeof(wchar_t));
+  MultiByteToWideChar(CP_UTF8, 0, str_utf8, -1, wstr, wlen);
+  return wstr;
+}
+
+FILE* zstd_fopen(const char* path_utf8, const char* mode) {
+  wchar_t* wpath = zstd_utf8_to_wide(path_utf8);
+  if (wpath == NULL) return NULL;
   wchar_t wmode[4];
   MultiByteToWideChar(CP_UTF8, 0, mode, -1, wmode, 4);
   return _wfopen(wpath, wmode);

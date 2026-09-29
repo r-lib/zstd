@@ -11,6 +11,13 @@
  * paths work regardless of the current locale/codepage. */
 FILE* zstd_fopen(const char* path_utf8, const char* mode);
 
+#ifdef _WIN32
+#include <wchar.h>
+/* Converts a UTF-8 string to a newly R_alloc()-ed UTF-16 string, for the
+ * wide-char Windows APIs. Returns NULL if `str_utf8` is not valid UTF-8. */
+wchar_t* zstd_utf8_to_wide(const char* str_utf8);
+#endif
+
 /* Applies the common advanced compression parameters (window_log,
  * checksum, strategy, nb_workers, content_size, dict_id,
  * long_distance_matching) to `cctx`. Each SEXP is either R_NilValue

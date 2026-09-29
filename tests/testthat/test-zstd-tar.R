@@ -29,6 +29,27 @@ test_that("zstd_tar_compress()/zstd_tar_decompress() round-trip a directory tree
   expect_identical(file.size(file.path(exdir, base, "empty.txt")), 0)
 })
 
+test_that("zstd_tar_compress()/zstd_tar_decompress() handle non-ASCII paths", {
+  root <- tempfile()
+  dir <- file.path(root, "déjà vu 文字")
+  sub <- file.path(dir, "über")
+  dir.create(sub, recursive = TRUE)
+  fname <- "őrült αβ.txt"
+  writeLines("hello", file.path(sub, fname))
+  on.exit(unlink(root, recursive = TRUE))
+
+  archive <- file.path(root, "árvíztűrő.tar.zst")
+  exdir <- file.path(root, "kiépítés")
+
+  zstd_tar_compress(dir, archive)
+  expect_true(file.exists(archive))
+  expect_silent(zstd_tar_decompress(archive, exdir))
+
+  out <- file.path(exdir, basename(dir), "über", fname)
+  expect_true(file.exists(out))
+  expect_identical(readLines(out), "hello")
+})
+
 test_that("zstd_tar_compress() supports relative paths longer than 100 bytes", {
   dir <- tempfile()
   comp <- paste(rep("a", 60), collapse = "")

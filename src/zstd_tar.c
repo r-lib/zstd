@@ -14,7 +14,25 @@
 #include <direct.h>
 #include <sys/stat.h>
 #include <sys/utime.h>
-#define zstd_mkdir(path) _mkdir(path)
+/* All paths are UTF-8 (from Rf_translateCharUTF8()), so on Windows use
+ * the wide-char APIs, like zstd_fopen() does, instead of the narrow ones,
+ * which would interpret them in the current codepage. */
+static int zstd_mkdir(const char* path) {
+  wchar_t* wpath = zstd_utf8_to_wide(path);
+  if (wpath == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+  return _wmkdir(wpath);
+}
+static int zstd_stat(const char* path, struct _stat* st) {
+  wchar_t* wpath = zstd_utf8_to_wide(path);
+  return wpath == NULL ? -1 : _wstat(wpath, st);
+}
+static int zstd_utime(const char* path, struct _utimbuf* ut) {
+  wchar_t* wpath = zstd_utf8_to_wide(path);
+  return wpath == NULL ? -1 : _wutime(wpath, ut);
+}
 #else
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -31,7 +49,7 @@ static void get_file_attrs(const char* path, unsigned* mode, unsigned* uid,
                            unsigned* gid) {
 #ifdef _WIN32
   struct _stat st;
-  *mode = (_stat(path, &st) == 0) ? (unsigned)(st.st_mode & 0777) : 0644;
+  *mode = (zstd_stat(path, &st) == 0) ? (unsigned)(st.st_mode & 0777) : 0644;
   *uid = 0;
   *gid = 0;
 #else
@@ -62,7 +80,7 @@ static void apply_attrs(const char* path, unsigned mtime, unsigned uid,
   struct _utimbuf ut;
   ut.actime = (time_t)mtime;
   ut.modtime = (time_t)mtime;
-  if (_utime(path, &ut) != 0) *chown_failed = 1;
+  if (zstd_utime(path, &ut) != 0) *chown_failed = 1;
 #else
   struct utimbuf ut;
   ut.actime = (time_t)mtime;
@@ -536,6 +554,39 @@ static void decompress_to_file(const char* input_path, const char* output_path,
   }
 }
 
+static int tar_file_read(mtar_t* tar, void* data, unsigned size) {
+  size_t res = fread(data, 1, size, (FILE*)tar->stream);
+  return (res == size) ? MTAR_ESUCCESS : MTAR_EREADFAIL;
+}
+
+static int tar_file_seek(mtar_t* tar, unsigned offset) {
+  int res = fseek((FILE*)tar->stream, offset, SEEK_SET);
+  return (res == 0) ? MTAR_ESUCCESS : MTAR_ESEEKFAIL;
+}
+
+static int tar_file_close(mtar_t* tar) {
+  fclose((FILE*)tar->stream);
+  return MTAR_ESUCCESS;
+}
+
+/* Like mtar_open(path, "r"), but opens the file with zstd_fopen(), so
+ * non-ASCII (UTF-8) paths work on Windows, too. */
+static int tar_open_read(mtar_t* tar, const char* path) {
+  memset(tar, 0, sizeof(*tar));
+  tar->read = tar_file_read;
+  tar->seek = tar_file_seek;
+  tar->close = tar_file_close;
+  tar->stream = zstd_fopen(path, "rb");
+  if (tar->stream == NULL) return MTAR_EOPENFAIL;
+  mtar_header_t h;
+  int err = mtar_read_header(tar, &h);
+  if (err != MTAR_ESUCCESS) {
+    mtar_close(tar);
+    return err;
+  }
+  return MTAR_ESUCCESS;
+}
+
 SEXP zstd_tar_decompress_(SEXP input, SEXP exdir, SEXP dict, SEXP tmp) {
   if (TYPEOF(input) != STRSXP) Rf_error("`input` must be a string");
   if (TYPEOF(exdir) != STRSXP) Rf_error("`exdir` must be a string");
@@ -550,7 +601,7 @@ SEXP zstd_tar_decompress_(SEXP input, SEXP exdir, SEXP dict, SEXP tmp) {
   decompress_to_file(input_path, tmp_path, dict);
 
   mtar_t tar;
-  int err = mtar_open(&tar, tmp_path, "r");
+  int err = tar_open_read(&tar, tmp_path);
   if (err) {
     Rf_error("Not a valid tar archive (after zstd decompression): %s",
              mtar_strerror(err));
