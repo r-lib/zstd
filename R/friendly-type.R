@@ -1,4 +1,4 @@
-# This is based on rlang:::obj_type_friendly, but adapted to base R
+# This is based on rlang's obj_type_friendly, but adapted to base R
 
 friendly_type <- local({
   friendly_type <- function(x, value = TRUE, length = FALSE) {
