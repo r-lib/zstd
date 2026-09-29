@@ -1,38 +1,37 @@
 #define R_NO_REMAP
+#include <R.h>
+#include <Rinternals.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#include <R.h>
-#include <Rinternals.h>
 #define ZSTD_STATIC_LINKING_ONLY
 #include "zstd.h"
 #include "zstd_r.h"
 
-SEXP zstd_compress_file_(
-  SEXP input, SEXP output, SEXP level, SEXP dict,
-  SEXP window_log, SEXP checksum, SEXP strategy, SEXP nb_workers,
-  SEXP content_size, SEXP dict_id, SEXP ldm
-) {
+SEXP zstd_compress_file_(SEXP input, SEXP output, SEXP level, SEXP dict,
+                         SEXP window_log, SEXP checksum, SEXP strategy,
+                         SEXP nb_workers, SEXP content_size, SEXP dict_id,
+                         SEXP ldm) {
   if (TYPEOF(input) != STRSXP) Rf_error("`input` must be a string");
   if (TYPEOF(output) != STRSXP) Rf_error("`output` must be a string");
   if (dict != R_NilValue && TYPEOF(dict) != RAWSXP) {
-    Rf_error("`dict` must be a raw vector or NULL");    // # nocov
+    Rf_error("`dict` must be a raw vector or NULL");  // # nocov
   }
-  const char *input_path = Rf_translateCharUTF8(STRING_ELT(input, 0));
-  const char *output_path = Rf_translateCharUTF8(STRING_ELT(output, 0));
+  const char* input_path = Rf_translateCharUTF8(STRING_ELT(input, 0));
+  const char* output_path = Rf_translateCharUTF8(STRING_ELT(output, 0));
   int lvl = Rf_asInteger(level);
 
-  FILE *fin = zstd_fopen(input_path, "rb");
+  FILE* fin = zstd_fopen(input_path, "rb");
   if (fin == NULL) {
     Rf_error("Cannot open input file '%s': %s", input_path, strerror(errno));
   }
-  FILE *fout = zstd_fopen(output_path, "wb");
+  FILE* fout = zstd_fopen(output_path, "wb");
   if (fout == NULL) {
     fclose(fin);
     Rf_error("Cannot open output file '%s': %s", output_path, strerror(errno));
   }
 
-  ZSTD_CCtx *cctx = ZSTD_createCCtx();
+  ZSTD_CCtx* cctx = ZSTD_createCCtx();
   if (cctx == NULL) {
     // # nocov start
     fclose(fin);
@@ -41,12 +40,12 @@ SEXP zstd_compress_file_(
     // # nocov end
   }
   ZSTD_CCtx_setParameter(cctx, ZSTD_c_compressionLevel, lvl);
-  zstd_set_common_cparams(cctx, window_log, checksum, strategy, nb_workers, content_size, dict_id, ldm);
+  zstd_set_common_cparams(cctx, window_log, checksum, strategy, nb_workers,
+                          content_size, dict_id, ldm);
   if (dict != R_NilValue) {
-    size_t dictSize = (size_t) XLENGTH(dict);
-    size_t dret = ZSTD_CCtx_loadDictionary(
-      cctx, dictSize ? RAW(dict) : NULL, dictSize
-    );
+    size_t dictSize = (size_t)XLENGTH(dict);
+    size_t dret =
+        ZSTD_CCtx_loadDictionary(cctx, dictSize ? RAW(dict) : NULL, dictSize);
     if (ZSTD_isError(dret)) {
       // # nocov start
       ZSTD_freeCCtx(cctx);
@@ -59,8 +58,8 @@ SEXP zstd_compress_file_(
 
   size_t const inBufSize = ZSTD_CStreamInSize();
   size_t const outBufSize = ZSTD_CStreamOutSize();
-  void *inBuf = R_alloc(inBufSize, 1);
-  void *outBuf = R_alloc(outBufSize, 1);
+  void* inBuf = R_alloc(inBufSize, 1);
+  void* outBuf = R_alloc(outBufSize, 1);
 
   size_t nRead;
   int finished = 0;
@@ -77,10 +76,10 @@ SEXP zstd_compress_file_(
     int lastChunk = feof(fin);
     ZSTD_EndDirective const mode = lastChunk ? ZSTD_e_end : ZSTD_e_continue;
 
-    ZSTD_inBuffer in = { inBuf, nRead, 0 };
+    ZSTD_inBuffer in = {inBuf, nRead, 0};
     int finishedChunk = 0;
     while (!finishedChunk) {
-      ZSTD_outBuffer out = { outBuf, outBufSize, 0 };
+      ZSTD_outBuffer out = {outBuf, outBufSize, 0};
       size_t const ret = ZSTD_compressStream2(cctx, &out, &in, mode);
       if (ZSTD_isError(ret)) {
         // # nocov start
@@ -110,7 +109,8 @@ SEXP zstd_compress_file_(
   fclose(fin);
   if (fclose(fout) != 0) {
     // # nocov start
-    Rf_error("Error closing output file '%s': %s", output_path, strerror(errno));
+    Rf_error("Error closing output file '%s': %s", output_path,
+             strerror(errno));
     // # nocov end
   }
 
@@ -121,22 +121,22 @@ SEXP zstd_decompress_file_(SEXP input, SEXP output, SEXP dict) {
   if (TYPEOF(input) != STRSXP) Rf_error("`input` must be a string");
   if (TYPEOF(output) != STRSXP) Rf_error("`output` must be a string");
   if (dict != R_NilValue && TYPEOF(dict) != RAWSXP) {
-    Rf_error("`dict` must be a raw vector or NULL");    // # nocov
+    Rf_error("`dict` must be a raw vector or NULL");  // # nocov
   }
-  const char *input_path = Rf_translateCharUTF8(STRING_ELT(input, 0));
-  const char *output_path = Rf_translateCharUTF8(STRING_ELT(output, 0));
+  const char* input_path = Rf_translateCharUTF8(STRING_ELT(input, 0));
+  const char* output_path = Rf_translateCharUTF8(STRING_ELT(output, 0));
 
-  FILE *fin = zstd_fopen(input_path, "rb");
+  FILE* fin = zstd_fopen(input_path, "rb");
   if (fin == NULL) {
     Rf_error("Cannot open input file '%s': %s", input_path, strerror(errno));
   }
-  FILE *fout = zstd_fopen(output_path, "wb");
+  FILE* fout = zstd_fopen(output_path, "wb");
   if (fout == NULL) {
     fclose(fin);
     Rf_error("Cannot open output file '%s': %s", output_path, strerror(errno));
   }
 
-  ZSTD_DCtx *dctx = ZSTD_createDCtx();
+  ZSTD_DCtx* dctx = ZSTD_createDCtx();
   if (dctx == NULL) {
     // # nocov start
     fclose(fin);
@@ -145,10 +145,9 @@ SEXP zstd_decompress_file_(SEXP input, SEXP output, SEXP dict) {
     // # nocov end
   }
   if (dict != R_NilValue) {
-    size_t dictSize = (size_t) XLENGTH(dict);
-    size_t dret = ZSTD_DCtx_loadDictionary(
-      dctx, dictSize ? RAW(dict) : NULL, dictSize
-    );
+    size_t dictSize = (size_t)XLENGTH(dict);
+    size_t dret =
+        ZSTD_DCtx_loadDictionary(dctx, dictSize ? RAW(dict) : NULL, dictSize);
     if (ZSTD_isError(dret)) {
       // # nocov start
       ZSTD_freeDCtx(dctx);
@@ -161,17 +160,17 @@ SEXP zstd_decompress_file_(SEXP input, SEXP output, SEXP dict) {
 
   size_t const inBufSize = ZSTD_DStreamInSize();
   size_t const outBufSize = ZSTD_DStreamOutSize();
-  void *inBuf = R_alloc(inBufSize, 1);
-  void *outBuf = R_alloc(outBufSize, 1);
+  void* inBuf = R_alloc(inBufSize, 1);
+  void* outBuf = R_alloc(outBufSize, 1);
 
   size_t lastRet = 0;
   int isEmpty = 1;
   size_t nRead;
   while ((nRead = fread(inBuf, 1, inBufSize, fin)) != 0) {
     isEmpty = 0;
-    ZSTD_inBuffer in = { inBuf, nRead, 0 };
+    ZSTD_inBuffer in = {inBuf, nRead, 0};
     while (in.pos < in.size) {
-      ZSTD_outBuffer out = { outBuf, outBufSize, 0 };
+      ZSTD_outBuffer out = {outBuf, outBufSize, 0};
       size_t const ret = ZSTD_decompressStream(dctx, &out, &in);
       if (ZSTD_isError(ret)) {
         // # nocov start
@@ -214,7 +213,8 @@ SEXP zstd_decompress_file_(SEXP input, SEXP output, SEXP dict) {
   fclose(fin);
   if (fclose(fout) != 0) {
     // # nocov start
-    Rf_error("Error closing output file '%s': %s", output_path, strerror(errno));
+    Rf_error("Error closing output file '%s': %s", output_path,
+             strerror(errno));
     // # nocov end
   }
 

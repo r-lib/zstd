@@ -1,0 +1,4 @@
+src/zstd.c
+src/zstd.h
+src/zstd_errors.h
+src/zdict.h

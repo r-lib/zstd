@@ -37,12 +37,12 @@
  *    into the checksum but then discarded).
  */
 
+#include "microtar.h"
+
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stddef.h>
 #include <string.h>
-
-#include "microtar.h"
 
 typedef struct {
   char name[100];
@@ -64,15 +64,13 @@ typedef struct {
   char _padding[12];
 } mtar_raw_header_t;
 
-
 static unsigned round_up(unsigned n, unsigned incr) {
   return n + (incr - n % incr) % incr;
 }
 
-
 static unsigned checksum(const mtar_raw_header_t* rh) {
   unsigned i;
-  unsigned char *p = (unsigned char*) rh;
+  unsigned char* p = (unsigned char*)rh;
   unsigned res = 256;
   for (i = 0; i < offsetof(mtar_raw_header_t, checksum); i++) {
     res += p[i];
@@ -83,22 +81,19 @@ static unsigned checksum(const mtar_raw_header_t* rh) {
   return res;
 }
 
-
-static int tread(mtar_t *tar, void *data, unsigned size) {
+static int tread(mtar_t* tar, void* data, unsigned size) {
   int err = tar->read(tar, data, size);
   tar->pos += size;
   return err;
 }
 
-
-static int twrite(mtar_t *tar, const void *data, unsigned size) {
+static int twrite(mtar_t* tar, const void* data, unsigned size) {
   int err = tar->write(tar, data, size);
   tar->pos += size;
   return err;
 }
 
-
-static int write_null_bytes(mtar_t *tar, int n) {
+static int write_null_bytes(mtar_t* tar, int n) {
   int i, err;
   char nul = '\0';
   for (i = 0; i < n; i++) {
@@ -110,11 +105,10 @@ static int write_null_bytes(mtar_t *tar, int n) {
   return MTAR_ESUCCESS;
 }
 
-
 /* Bounds-checked copy: returns MTAR_ENAMETOOLONG if `src` (plus terminating
  * nul) does not fit in a buffer of size `dstsize`, instead of overflowing
  * it like upstream's unchecked strcpy(). */
-static int safe_copy(char *dst, size_t dstsize, const char *src) {
+static int safe_copy(char* dst, size_t dstsize, const char* src) {
   size_t len = strlen(src);
   if (len + 1 > dstsize) {
     return MTAR_ENAMETOOLONG;
@@ -123,18 +117,17 @@ static int safe_copy(char *dst, size_t dstsize, const char *src) {
   return MTAR_ESUCCESS;
 }
 
-
 /* Splits `name` into a ustar 'prefix' and 'name' pair: `name_out` (up to 99
  * bytes + nul) and `prefix_out` (up to 154 bytes + nul), such that the
  * original path is `prefix_out + "/" + name_out`. Picks the rightmost '/'
  * that makes both halves fit. Returns MTAR_ENAMETOOLONG if no split works
  * (e.g. a single path component longer than 99 bytes, or the full path
  * longer than 254 bytes). */
-static int split_name(const char *name, char *prefix_out, char *name_out) {
+static int split_name(const char* name, char* prefix_out, char* name_out) {
   size_t len = strlen(name);
 
   prefix_out[0] = '\0';
-  if (len < sizeof(((mtar_raw_header_t *) 0)->name)) {
+  if (len < sizeof(((mtar_raw_header_t*)0)->name)) {
     return safe_copy(name_out, 100, name);
   }
 
@@ -155,8 +148,7 @@ static int split_name(const char *name, char *prefix_out, char *name_out) {
   return MTAR_ENAMETOOLONG;
 }
 
-
-static int raw_to_header(mtar_header_t *h, const mtar_raw_header_t *rh) {
+static int raw_to_header(mtar_header_t* h, const mtar_raw_header_t* rh) {
   unsigned chksum1, chksum2;
 
   /* If the checksum starts with a null byte we assume the record is NULL */
@@ -201,7 +193,7 @@ static int raw_to_header(mtar_header_t *h, const mtar_raw_header_t *rh) {
   } else {
     size_t name_len = strnlen(rh->name, sizeof(rh->name));
     if (name_len + 1 > sizeof(h->name)) {
-      return MTAR_ENAMETOOLONG;    // # nocov
+      return MTAR_ENAMETOOLONG;  // # nocov
     }
     memcpy(h->name, rh->name, name_len);
     h->name[name_len] = '\0';
@@ -210,7 +202,7 @@ static int raw_to_header(mtar_header_t *h, const mtar_raw_header_t *rh) {
   {
     size_t linkname_len = strnlen(rh->linkname, sizeof(rh->linkname));
     if (linkname_len + 1 > sizeof(h->linkname)) {
-      return MTAR_ENAMETOOLONG;    // # nocov
+      return MTAR_ENAMETOOLONG;  // # nocov
     }
     memcpy(h->linkname, rh->linkname, linkname_len);
     h->linkname[linkname_len] = '\0';
@@ -219,8 +211,7 @@ static int raw_to_header(mtar_header_t *h, const mtar_raw_header_t *rh) {
   return MTAR_ESUCCESS;
 }
 
-
-static int header_to_raw(mtar_raw_header_t *rh, const mtar_header_t *h) {
+static int header_to_raw(mtar_raw_header_t* rh, const mtar_header_t* h) {
   unsigned chksum;
   int err;
 
@@ -252,46 +243,53 @@ static int header_to_raw(mtar_raw_header_t *rh, const mtar_header_t *h) {
   return MTAR_ESUCCESS;
 }
 
-
 const char* mtar_strerror(int err) {
   switch (err) {
-    case MTAR_ESUCCESS     : return "success";
-    case MTAR_EFAILURE     : return "failure";
-    case MTAR_EOPENFAIL    : return "could not open";
-    case MTAR_EREADFAIL    : return "could not read";
-    case MTAR_EWRITEFAIL   : return "could not write";
-    case MTAR_ESEEKFAIL    : return "could not seek";
-    case MTAR_EBADCHKSUM   : return "bad checksum";
-    case MTAR_ENULLRECORD  : return "null record";
-    case MTAR_ENOTFOUND    : return "file not found";
-    case MTAR_ENAMETOOLONG : return "name too long";
+    case MTAR_ESUCCESS:
+      return "success";
+    case MTAR_EFAILURE:
+      return "failure";
+    case MTAR_EOPENFAIL:
+      return "could not open";
+    case MTAR_EREADFAIL:
+      return "could not read";
+    case MTAR_EWRITEFAIL:
+      return "could not write";
+    case MTAR_ESEEKFAIL:
+      return "could not seek";
+    case MTAR_EBADCHKSUM:
+      return "bad checksum";
+    case MTAR_ENULLRECORD:
+      return "null record";
+    case MTAR_ENOTFOUND:
+      return "file not found";
+    case MTAR_ENAMETOOLONG:
+      return "name too long";
   }
   return "unknown error";
 }
 
-
-static int file_write(mtar_t *tar, const void *data, unsigned size) {
+static int file_write(mtar_t* tar, const void* data, unsigned size) {
   unsigned res = fwrite(data, 1, size, tar->stream);
   return (res == size) ? MTAR_ESUCCESS : MTAR_EWRITEFAIL;
 }
 
-static int file_read(mtar_t *tar, void *data, unsigned size) {
+static int file_read(mtar_t* tar, void* data, unsigned size) {
   unsigned res = fread(data, 1, size, tar->stream);
   return (res == size) ? MTAR_ESUCCESS : MTAR_EREADFAIL;
 }
 
-static int file_seek(mtar_t *tar, unsigned offset) {
+static int file_seek(mtar_t* tar, unsigned offset) {
   int res = fseek(tar->stream, offset, SEEK_SET);
   return (res == 0) ? MTAR_ESUCCESS : MTAR_ESEEKFAIL;
 }
 
-static int file_close(mtar_t *tar) {
+static int file_close(mtar_t* tar) {
   fclose(tar->stream);
   return MTAR_ESUCCESS;
 }
 
-
-int mtar_open(mtar_t *tar, const char *filename, const char *mode) {
+int mtar_open(mtar_t* tar, const char* filename, const char* mode) {
   int err;
   mtar_header_t h;
 
@@ -303,9 +301,9 @@ int mtar_open(mtar_t *tar, const char *filename, const char *mode) {
   tar->close = file_close;
 
   /* Assure mode is always binary */
-  if ( strchr(mode, 'r') ) mode = "rb";
-  if ( strchr(mode, 'w') ) mode = "wb";
-  if ( strchr(mode, 'a') ) mode = "ab";
+  if (strchr(mode, 'r')) mode = "rb";
+  if (strchr(mode, 'w')) mode = "wb";
+  if (strchr(mode, 'a')) mode = "ab";
   /* Open file */
   tar->stream = fopen(filename, mode);
   if (!tar->stream) {
@@ -324,27 +322,21 @@ int mtar_open(mtar_t *tar, const char *filename, const char *mode) {
   return MTAR_ESUCCESS;
 }
 
+int mtar_close(mtar_t* tar) { return tar->close(tar); }
 
-int mtar_close(mtar_t *tar) {
-  return tar->close(tar);
-}
-
-
-int mtar_seek(mtar_t *tar, unsigned pos) {
+int mtar_seek(mtar_t* tar, unsigned pos) {
   int err = tar->seek(tar, pos);
   tar->pos = pos;
   return err;
 }
 
-
-int mtar_rewind(mtar_t *tar) {
+int mtar_rewind(mtar_t* tar) {
   tar->remaining_data = 0;
   tar->last_header = 0;
   return mtar_seek(tar, 0);
 }
 
-
-int mtar_next(mtar_t *tar) {
+int mtar_next(mtar_t* tar) {
   int err, n;
   mtar_header_t h;
   /* Load header */
@@ -357,8 +349,7 @@ int mtar_next(mtar_t *tar) {
   return mtar_seek(tar, tar->pos + n);
 }
 
-
-int mtar_find(mtar_t *tar, const char *name, mtar_header_t *h) {
+int mtar_find(mtar_t* tar, const char* name, mtar_header_t* h) {
   int err;
   mtar_header_t header;
   /* Start at beginning */
@@ -367,8 +358,8 @@ int mtar_find(mtar_t *tar, const char *name, mtar_header_t *h) {
     return err;
   }
   /* Iterate all files until we hit an error or find the file */
-  while ( (err = mtar_read_header(tar, &header)) == MTAR_ESUCCESS ) {
-    if ( !strcmp(header.name, name) ) {
+  while ((err = mtar_read_header(tar, &header)) == MTAR_ESUCCESS) {
+    if (!strcmp(header.name, name)) {
       if (h) {
         *h = header;
       }
@@ -383,8 +374,7 @@ int mtar_find(mtar_t *tar, const char *name, mtar_header_t *h) {
   return err;
 }
 
-
-int mtar_read_header(mtar_t *tar, mtar_header_t *h) {
+int mtar_read_header(mtar_t* tar, mtar_header_t* h) {
   int err;
   mtar_raw_header_t rh;
   /* Save header position */
@@ -403,8 +393,7 @@ int mtar_read_header(mtar_t *tar, mtar_header_t *h) {
   return raw_to_header(h, &rh);
 }
 
-
-int mtar_read_data(mtar_t *tar, void *ptr, unsigned size) {
+int mtar_read_data(mtar_t* tar, void* ptr, unsigned size) {
   int err;
   /* If we have no remaining data then this is the first read, we get the size,
    * set the remaining data and seek to the beginning of the data */
@@ -436,8 +425,7 @@ int mtar_read_data(mtar_t *tar, void *ptr, unsigned size) {
   return MTAR_ESUCCESS;
 }
 
-
-int mtar_write_header(mtar_t *tar, const mtar_header_t *h) {
+int mtar_write_header(mtar_t* tar, const mtar_header_t* h) {
   mtar_raw_header_t rh;
   int err;
   /* Build raw header and write */
@@ -449,11 +437,8 @@ int mtar_write_header(mtar_t *tar, const mtar_header_t *h) {
   return twrite(tar, &rh, sizeof(rh));
 }
 
-
-int mtar_write_file_header(
-  mtar_t *tar, const char *name, unsigned size, unsigned mode, unsigned uid,
-  unsigned gid
-) {
+int mtar_write_file_header(mtar_t* tar, const char* name, unsigned size,
+                           unsigned mode, unsigned uid, unsigned gid) {
   mtar_header_t h;
   int err;
   /* Build header */
@@ -471,10 +456,8 @@ int mtar_write_file_header(
   return mtar_write_header(tar, &h);
 }
 
-
-int mtar_write_dir_header(
-  mtar_t *tar, const char *name, unsigned mode, unsigned uid, unsigned gid
-) {
+int mtar_write_dir_header(mtar_t* tar, const char* name, unsigned mode,
+                          unsigned uid, unsigned gid) {
   mtar_header_t h;
   int err;
   /* Build header */
@@ -491,8 +474,7 @@ int mtar_write_dir_header(
   return mtar_write_header(tar, &h);
 }
 
-
-int mtar_write_data(mtar_t *tar, const void *data, unsigned size) {
+int mtar_write_data(mtar_t* tar, const void* data, unsigned size) {
   int err;
   /* Write data */
   err = twrite(tar, data, size);
@@ -507,8 +489,7 @@ int mtar_write_data(mtar_t *tar, const void *data, unsigned size) {
   return MTAR_ESUCCESS;
 }
 
-
-int mtar_finalize(mtar_t *tar) {
+int mtar_finalize(mtar_t* tar) {
   /* Write two NULL records */
   return write_null_bytes(tar, sizeof(mtar_raw_header_t) * 2);
 }

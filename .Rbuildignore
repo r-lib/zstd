@@ -7,3 +7,6 @@
 ^codecov\.yml$
 ^[.]?air[.]toml$
 ^\.vscode$
+^\.clang-format$
+^\.clang-format-ignore$
+^Makefile$

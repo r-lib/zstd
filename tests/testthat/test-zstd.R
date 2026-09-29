@@ -273,7 +273,10 @@ test_that("zstd_tar_compress()/zstd_tar_decompress() round-trip a directory tree
   dir <- tempfile()
   dir.create(file.path(dir, "subdir"), recursive = TRUE)
   writeLines("hello", file.path(dir, "a.txt"))
-  writeLines(paste(rep("world ", 1000), collapse = ""), file.path(dir, "subdir", "b.txt"))
+  writeLines(
+    paste(rep("world ", 1000), collapse = ""),
+    file.path(dir, "subdir", "b.txt")
+  )
   file.create(file.path(dir, "empty.txt"))
   on.exit(unlink(dir, recursive = TRUE))
 
@@ -375,7 +378,9 @@ test_that("zstd_tar_decompress() refuses path-traversal entries", {
   con <- file(tar_path, "wb")
   writeBin(make_tar_header("../../evil.txt", length(content)), con)
   writeBin(content, con)
-  if (pad_len > 0) writeBin(raw(pad_len), con)
+  if (pad_len > 0) {
+    writeBin(raw(pad_len), con)
+  }
   writeBin(raw(1024), con)
   close(con)
 
@@ -397,7 +402,9 @@ pax_raw_record <- function(text) {
   n <- nchar(body) + 1
   repeat {
     reclen <- nchar(as.character(n)) + nchar(body)
-    if (reclen == n) return(paste0(n, body))
+    if (reclen == n) {
+      return(paste0(n, body))
+    }
     n <- reclen
   }
 }
@@ -409,10 +416,20 @@ pax_record <- function(key, value) pax_raw_record(paste0(key, "=", value))
 # that's already running the test succeeds even when not running as
 # root, unlike chown(..., 0, 0). Falls back to 0 where `id` isn't
 # available (e.g. Windows), where the fixed-owner tests are skipped.
-test_uid <- suppressWarnings(as.integer(tryCatch(system("id -u", intern = TRUE), error = function(e) NA)))
-test_gid <- suppressWarnings(as.integer(tryCatch(system("id -g", intern = TRUE), error = function(e) NA)))
-if (is.na(test_uid)) test_uid <- 0L
-if (is.na(test_gid)) test_gid <- 0L
+test_uid <- suppressWarnings(as.integer(tryCatch(
+  system("id -u", intern = TRUE),
+  error = function(e) NA
+)))
+test_gid <- suppressWarnings(as.integer(tryCatch(
+  system("id -g", intern = TRUE),
+  error = function(e) NA
+)))
+if (is.na(test_uid)) {
+  test_uid <- 0L
+}
+if (is.na(test_gid)) {
+  test_gid <- 0L
+}
 
 make_tar_header <- function(name, size, type = "0") {
   h <- raw(512)
@@ -469,7 +486,14 @@ test_that("zstd_tar_decompress() applies a PAX 'x' extended header's path overri
   zstd_tar_decompress(archive, exdir)
   expect_true(file.exists(file.path(exdir, "some/long/path.txt")))
   expect_false(file.exists(file.path(exdir, "short-name.txt")))
-  expect_identical(readBin(file.path(exdir, "some/long/path.txt"), "raw", length(file_content)), file_content)
+  expect_identical(
+    readBin(
+      file.path(exdir, "some/long/path.txt"),
+      "raw",
+      length(file_content)
+    ),
+    file_content
+  )
 })
 
 test_that("zstd_tar_decompress() applies a PAX 'g' global extended header to later entries", {
@@ -477,7 +501,10 @@ test_that("zstd_tar_decompress() applies a PAX 'g' global extended header to lat
   # (here, mtime) apply as defaults to every entry that follows, not just
   # the next one.
   mtime <- 1000000000
-  pax_content <- charToRaw(pax_record("mtime", format(mtime, scientific = FALSE)))
+  pax_content <- charToRaw(pax_record(
+    "mtime",
+    format(mtime, scientific = FALSE)
+  ))
 
   tar_path <- tempfile(fileext = ".tar")
   on.exit(unlink(tar_path))
@@ -494,8 +521,14 @@ test_that("zstd_tar_decompress() applies a PAX 'g' global extended header to lat
 
   exdir <- tempfile()
   zstd_tar_decompress(archive, exdir)
-  expect_identical(as.numeric(file.info(file.path(exdir, "a.txt"))$mtime), mtime)
-  expect_identical(as.numeric(file.info(file.path(exdir, "b.txt"))$mtime), mtime)
+  expect_identical(
+    as.numeric(file.info(file.path(exdir, "a.txt"))$mtime),
+    mtime
+  )
+  expect_identical(
+    as.numeric(file.info(file.path(exdir, "b.txt"))$mtime),
+    mtime
+  )
 })
 
 test_that("zstd_tar_decompress() warns (but still extracts) on a PAX/ustar size mismatch", {
@@ -516,7 +549,10 @@ test_that("zstd_tar_decompress() warns (but still extracts) on a PAX/ustar size 
 
   exdir <- tempfile()
   expect_warning(zstd_tar_decompress(archive, exdir), "size")
-  expect_identical(readBin(file.path(exdir, "c.txt"), "raw", length(file_content)), file_content)
+  expect_identical(
+    readBin(file.path(exdir, "c.txt"), "raw", length(file_content)),
+    file_content
+  )
 })
 
 test_that("zstd_tar_decompress() errors clearly on a malformed PAX record", {
