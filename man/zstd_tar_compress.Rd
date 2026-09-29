@@ -29,8 +29,10 @@ the archive.}
 already exists.}
 
 \item{level}{Integer compression level. Defaults to
-\code{\link[=zstd_default_clevel]{zstd_default_clevel()}}. Valid range is \code{\link[=zstd_min_clevel]{zstd_min_clevel()}} to
-\code{\link[=zstd_max_clevel]{zstd_max_clevel()}}.}
+\code{\link[=zstd_default_clevel]{zstd_default_clevel()}}, which is 3 on
+this system. Valid range is \code{\link[=zstd_min_clevel]{zstd_min_clevel()}} to
+\code{\link[=zstd_max_clevel]{zstd_max_clevel()}}, which is -131072 to
+22 on this system.}
 
 \item{dict}{\code{NULL}, or a raw vector containing a dictionary (as created
 by \code{\link[=zstd_train_dict]{zstd_train_dict()}}, or any raw content dictionary). The same
@@ -80,6 +82,7 @@ about 254 bytes are supported (longer paths raise an error); files
 larger than 4GB are not supported.
 }
 \examples{
+\dontshow{if (!asNamespace("zstd")$is_rcmd_check()) withAutoprint(\{ # examplesIf}
 dir <- tempfile()
 dir.create(file.path(dir, "subdir"), recursive = TRUE)
 writeLines("hello", file.path(dir, "a.txt"))
@@ -89,4 +92,5 @@ zstd_tar_compress(dir, archive)
 exdir <- tempfile()
 zstd_tar_decompress(archive, exdir)
 readLines(file.path(exdir, basename(dir), "subdir", "b.txt"))
+\dontshow{\}) # examplesIf}
 }

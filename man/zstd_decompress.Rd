@@ -25,10 +25,15 @@ size of \code{input}. If the frame carries a content checksum (see the
 an error is raised if the checksum does not match.
 }
 \examples{
+\dontshow{if (!asNamespace("zstd")$is_rcmd_check()) withAutoprint(\{ # examplesIf}
 src <- tempfile()
 dst <- tempfile()
 writeLines("hello world", src)
 zstd_compress(src, dst)
 zstd_decompress(dst, src2 <- tempfile())
-identical(readBin(src, "raw", file.size(src)), readBin(src2, "raw", file.size(src2)))
+identical(
+  readBin(src, "raw", file.size(src)),
+  readBin(src2, "raw", file.size(src2))
+)
+\dontshow{\}) # examplesIf}
 }

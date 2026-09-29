@@ -16,16 +16,13 @@
 #'   the archive.
 #' @param output Path of the `.tar.zst` file to create. Overwritten if it
 #'   already exists.
-#' @param level Integer compression level. Defaults to
-#'   [zstd_default_clevel()]. Valid range is [zstd_min_clevel()] to
-#'   [zstd_max_clevel()].
 #' @param dict `NULL`, or a raw vector containing a dictionary (as created
 #'   by [zstd_train_dict()], or any raw content dictionary). The same
 #'   dictionary must be passed to [zstd_tar_decompress()].
 #' @inheritParams zstd_mem_compress
 #' @return `output`, invisibly.
 #' @export
-#' @examples
+#' @examplesIf !asNamespace("zstd")$is_rcmd_check()
 #' dir <- tempfile()
 #' dir.create(file.path(dir, "subdir"), recursive = TRUE)
 #' writeLines("hello", file.path(dir, "a.txt"))
@@ -151,7 +148,7 @@ tar_relative_path <- function(paths, base) {
 #'   used to compress `input`. See [zstd_tar_compress()].
 #' @return `exdir`, invisibly.
 #' @export
-#' @examples
+#' @examplesIf !asNamespace("zstd")$is_rcmd_check()
 #' dir <- tempfile()
 #' dir.create(dir)
 #' writeLines("hello world", file.path(dir, "a.txt"))

@@ -35,6 +35,7 @@ tools that use GNU long name/link headers are not supported, and raise
 an error rather than being extracted incorrectly.
 }
 \examples{
+\dontshow{if (!asNamespace("zstd")$is_rcmd_check()) withAutoprint(\{ # examplesIf}
 dir <- tempfile()
 dir.create(dir)
 writeLines("hello world", file.path(dir, "a.txt"))
@@ -43,4 +44,5 @@ zstd_tar_compress(dir, archive)
 exdir <- tempfile()
 zstd_tar_decompress(archive, exdir)
 readLines(file.path(exdir, basename(dir), "a.txt"))
+\dontshow{\}) # examplesIf}
 }

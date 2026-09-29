@@ -35,7 +35,9 @@ existing file), returning one row per frame in the order they
 appear in the file.
 }
 \examples{
+\dontshow{if (!asNamespace("zstd")$is_rcmd_check()) withAutoprint(\{ # examplesIf}
 tmp <- tempfile()
 writeBin(zstd_mem_compress(charToRaw("hello world")), tmp)
 zstd_info(tmp)
+\dontshow{\}) # examplesIf}
 }

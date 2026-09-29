@@ -25,8 +25,10 @@ zstd_compress(
 already exists.}
 
 \item{level}{Integer compression level. Defaults to
-\code{\link[=zstd_default_clevel]{zstd_default_clevel()}}. Valid range is \code{\link[=zstd_min_clevel]{zstd_min_clevel()}} to
-\code{\link[=zstd_max_clevel]{zstd_max_clevel()}}.}
+\code{\link[=zstd_default_clevel]{zstd_default_clevel()}}, which is 3 on
+this system. Valid range is \code{\link[=zstd_min_clevel]{zstd_min_clevel()}} to
+\code{\link[=zstd_max_clevel]{zstd_max_clevel()}}, which is -131072 to
+22 on this system.}
 
 \item{dict}{\code{NULL}, or a raw vector containing a dictionary (as created
 by \code{\link[=zstd_train_dict]{zstd_train_dict()}}, or any raw content dictionary). The same
@@ -69,10 +71,15 @@ Uses the streaming API, so memory use stays bounded regardless of the
 size of \code{input}.
 }
 \examples{
+\dontshow{if (!asNamespace("zstd")$is_rcmd_check()) withAutoprint(\{ # examplesIf}
 src <- tempfile()
 dst <- tempfile()
 writeLines(paste(rep("hello world", 1000), collapse = " "), src)
 zstd_compress(src, dst)
 zstd_decompress(dst, src2 <- tempfile())
-identical(readBin(src, "raw", file.size(src)), readBin(src2, "raw", file.size(src2)))
+identical(
+  readBin(src, "raw", file.size(src)),
+  readBin(src2, "raw", file.size(src2))
+)
+\dontshow{\}) # examplesIf}
 }

@@ -22,7 +22,7 @@
 #'   * `checksum`: whether the frame includes a content checksum, or `NA`
 #'     for skippable frames.
 #' @export
-#' @examples
+#' @examplesIf !asNamespace("zstd")$is_rcmd_check()
 #' tmp <- tempfile()
 #' writeBin(zstd_mem_compress(charToRaw("hello world")), tmp)
 #' zstd_info(tmp)

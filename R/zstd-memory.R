@@ -2,8 +2,10 @@
 #'
 #' @param x A raw vector to compress.
 #' @param level Integer compression level. Defaults to
-#'   [zstd_default_clevel()]. Valid range is [zstd_min_clevel()] to
-#'   [zstd_max_clevel()].
+#'   [zstd_default_clevel()], which is `r zstd_default_clevel()` on
+#'   this system. Valid range is [zstd_min_clevel()] to
+#'   [zstd_max_clevel()], which is `r zstd_min_clevel()` to
+#'   `r zstd_max_clevel()` on this system.
 #' @param dict `NULL`, or a raw vector containing a dictionary (as created
 #'   by [zstd_train_dict()], or any raw content dictionary). Using a
 #'   dictionary can substantially improve the compression ratio of small,
