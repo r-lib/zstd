@@ -14,10 +14,122 @@ Zstandard compression and decompression rfor R.
 
 ## Installation
 
-You can install the development version of zstd from
-[GitHub](https://github.com/) with:
+Install the stable version from CRAN:
 
 ``` r
-# install.packages("pak")
+install.packages("zstd")
+```
+
+Install the development version from GitHub:
+
+``` r
 pak::pak("r-lib/zstd")
 ```
+
+## Usage
+
+``` r
+library(zstd)
+```
+
+### Compress data in memory
+
+`zstd_mem_compress()` and `zstd_mem_decompress()` work on raw vectors:
+
+``` r
+x <- charToRaw(paste(rep("hello world ", 1000), collapse = ""))
+cmp <- zstd_mem_compress(x)
+length(x)
+#> [1] 12000
+length(cmp)
+#> [1] 30
+identical(zstd_mem_decompress(cmp), x)
+#> [1] TRUE
+```
+
+Use the `level` argument to trade speed for a better compression ratio:
+
+``` r
+zstd_min_clevel()
+#> [1] -131072
+zstd_default_clevel()
+#> [1] 3
+zstd_max_clevel()
+#> [1] 22
+cmp19 <- zstd_mem_compress(x, level = 19)
+```
+
+### Compress files
+
+`zstd_compress()` and `zstd_decompress()` work on files:
+
+``` r
+src <- tempfile()
+writeLines(rep("hello world", 1000), src)
+dst <- tempfile(fileext = ".zst")
+zstd_compress(src, dst)
+file.size(src)
+#> [1] 12000
+file.size(dst)
+#> [1] 30
+```
+
+`zstd_info()` shows information about compressed files:
+
+``` r
+zstd_info(dst)[, -1]
+#>    type compressed_size content_size window_size dict_id checksum
+#> 1 frame              30        12000       12000       0    FALSE
+```
+
+``` r
+out <- tempfile()
+zstd_decompress(dst, out)
+identical(readLines(src), readLines(out))
+#> [1] TRUE
+```
+
+### Compressed tar archives
+
+`zstd_tar_compress()` creates a `.tar.zst` archive from files and
+directories, and `zstd_tar_decompress()` extracts it:
+
+``` r
+dir <- tempfile()
+dir.create(file.path(dir, "subdir"), recursive = TRUE)
+writeLines("hello", file.path(dir, "a.txt"))
+writeLines("world", file.path(dir, "subdir", "b.txt"))
+
+archive <- tempfile(fileext = ".tar.zst")
+zstd_tar_compress(dir, archive)
+
+exdir <- tempfile()
+zstd_tar_decompress(archive, exdir)
+dir(exdir, recursive = TRUE)
+#> [1] "file14133fd31f45/a.txt"        "file14133fd31f45/subdir/b.txt"
+```
+
+### Dictionaries
+
+For many small, similar inputs, train a dictionary with
+`zstd_train_dict()` and use it for both compression and decompression:
+
+``` r
+samples <- lapply(1:100, function(i) {
+  charToRaw(paste0('{"id":', i, ',"name":"sample"}'))
+})
+dict <- zstd_train_dict(samples, size = 1000)
+length(samples[[1]])
+#> [1] 24
+length(zstd_mem_compress(samples[[1]]))
+#> [1] 33
+cmp <- zstd_mem_compress(samples[[1]], dict = dict)
+length(cmp)
+#> [1] 20
+identical(zstd_mem_decompress(cmp, dict = dict), samples[[1]])
+#> [1] TRUE
+```
+
+# License
+
+MIT © Posit Software, PBC
