@@ -70,20 +70,10 @@ zstd_tar_compress <- function(
     # Entry names are stored relative to each path's own parent directory
     # (like `tar cf x.tar dir` does), so absolute paths (e.g. from
     # tempfile()) don't leak local filesystem structure into the archive.
-    base <- gsub("\\", "/", dirname(files[i]), fixed = TRUE)
-    relative_to_base <- function(p) {
-      p <- gsub("\\", "/", p, fixed = TRUE)
-      if (identical(base, ".")) {
-        return(p)
-      }
-      base_len <- nchar(base)
-      is_prefixed <- substr(p, 1, base_len) == base &
-        substr(p, base_len + 1, base_len + 1) == "/"
-      ifelse(is_prefixed, substring(p, base_len + 2), p)
-    }
+    base <- dirname(files[i])
 
     paths <- c(paths, files[i])
-    entries <- c(entries, relative_to_base(files[i]))
+    entries <- c(entries, tar_relative_path(files[i], base))
     isdir <- c(isdir, info$isdir[i])
     if (info$isdir[i]) {
       children <- list.files(
@@ -97,7 +87,7 @@ zstd_tar_compress <- function(
       if (length(children) > 0) {
         cinfo <- file.info(children)
         paths <- c(paths, children)
-        entries <- c(entries, relative_to_base(children))
+        entries <- c(entries, tar_relative_path(children, base))
         isdir <- c(isdir, cinfo$isdir)
       }
     }
@@ -120,6 +110,22 @@ zstd_tar_compress <- function(
     p$ldm
   )
   invisible(output)
+}
+
+# Make `paths` relative to the directory `base`, for use as tar entry
+# names. Backslashes are converted to forward slashes first. Paths that
+# are not under `base` are returned unchanged (apart from the slashes).
+tar_relative_path <- function(paths, base) {
+  paths <- gsub("\\", "/", paths, fixed = TRUE)
+  base <- gsub("\\", "/", base, fixed = TRUE)
+  if (identical(base, ".")) {
+    return(paths)
+  }
+  base_len <- nchar(base)
+  is_prefixed <- substr(paths, 1, base_len) == base &
+    substr(paths, base_len + 1, base_len + 1) == "/"
+  paths[is_prefixed] <- substring(paths[is_prefixed], base_len + 2)
+  paths
 }
 
 #' Extract a Zstandard-compressed tar archive

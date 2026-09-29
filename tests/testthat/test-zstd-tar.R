@@ -256,3 +256,31 @@ test_that("zstd_tar_compress()/zstd_tar_decompress() validate their arguments", 
 
   expect_error(zstd_tar_decompress(tempfile()))
 })
+
+test_that("tar_relative_path()", {
+  # base "." leaves paths alone
+  expect_equal(tar_relative_path("a.txt", "."), "a.txt")
+  expect_equal(tar_relative_path(c("d", "d/x"), "."), c("d", "d/x"))
+
+  # strips base and the following slash
+  expect_equal(
+    tar_relative_path(c("/tmp/x/d", "/tmp/x/d/sub/a.txt"), "/tmp/x"),
+    c("d", "d/sub/a.txt")
+  )
+  expect_equal(tar_relative_path("rel/d/a.txt", "rel"), "d/a.txt")
+
+  # only strips whole path components
+  expect_equal(tar_relative_path("/tmp/xy/a.txt", "/tmp/x"), "/tmp/xy/a.txt")
+
+  # paths not under base are returned unchanged
+  expect_equal(tar_relative_path("/other/a.txt", "/tmp/x"), "/other/a.txt")
+
+  # backslashes in paths and base become forward slashes
+  expect_equal(
+    tar_relative_path("C:\\tmp\\x\\d\\a.txt", "C:\\tmp\\x"),
+    "d/a.txt"
+  )
+  expect_equal(tar_relative_path("d\\a.txt", "."), "d/a.txt")
+
+  expect_equal(tar_relative_path(character(0), "/tmp"), character(0))
+})
