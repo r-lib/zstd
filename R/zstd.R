@@ -46,8 +46,8 @@ zstd_check_common_cparams <- function(
   long_distance_matching
 ) {
   if (!is.null(window_log)) {
-    window_log <- as.integer(window_log)
-    if (is.na(window_log)) {
+    window_log <- suppressWarnings(as.integer(window_log))
+    if (length(window_log) != 1 || is.na(window_log)) {
       stop("`window_log` must be an integer or NULL", call. = FALSE)
     }
   }
@@ -56,8 +56,8 @@ zstd_check_common_cparams <- function(
   }
   strategy <- zstd_strategy_int(strategy)
   if (!is.null(nb_workers)) {
-    nb_workers <- as.integer(nb_workers)
-    if (is.na(nb_workers) || nb_workers < 0) {
+    nb_workers <- suppressWarnings(as.integer(nb_workers))
+    if (length(nb_workers) != 1 || is.na(nb_workers) || nb_workers < 0) {
       stop("`nb_workers` must be a non-negative integer", call. = FALSE)
     }
   }
