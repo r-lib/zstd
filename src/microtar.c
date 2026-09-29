@@ -35,6 +35,9 @@
  *  - mtar_header_t's 'owner' field is now 'uid', and a 'gid' field was
  *    added (parsed from the raw 'group' field, which upstream parsed
  *    into the checksum but then discarded).
+ *  - mtar_write_file_header() and mtar_write_dir_header() take mode,
+ *    uid, gid and mtime arguments, instead of upstream's fixed mode and
+ *    zero uid/gid/mtime.
  */
 
 #include "microtar.h"
@@ -438,7 +441,8 @@ int mtar_write_header(mtar_t* tar, const mtar_header_t* h) {
 }
 
 int mtar_write_file_header(mtar_t* tar, const char* name, unsigned size,
-                           unsigned mode, unsigned uid, unsigned gid) {
+                           unsigned mode, unsigned uid, unsigned gid,
+                           unsigned mtime) {
   mtar_header_t h;
   int err;
   /* Build header */
@@ -452,12 +456,13 @@ int mtar_write_file_header(mtar_t* tar, const char* name, unsigned size,
   h.mode = mode;
   h.uid = uid;
   h.gid = gid;
+  h.mtime = mtime;
   /* Write header */
   return mtar_write_header(tar, &h);
 }
 
 int mtar_write_dir_header(mtar_t* tar, const char* name, unsigned mode,
-                          unsigned uid, unsigned gid) {
+                          unsigned uid, unsigned gid, unsigned mtime) {
   mtar_header_t h;
   int err;
   /* Build header */
@@ -470,6 +475,7 @@ int mtar_write_dir_header(mtar_t* tar, const char* name, unsigned mode,
   h.mode = mode;
   h.uid = uid;
   h.gid = gid;
+  h.mtime = mtime;
   /* Write header */
   return mtar_write_header(tar, &h);
 }

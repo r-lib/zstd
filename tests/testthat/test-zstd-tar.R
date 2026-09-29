@@ -50,6 +50,25 @@ test_that("zstd_tar_compress()/zstd_tar_decompress() handle non-ASCII paths", {
   expect_identical(readLines(out), "hello")
 })
 
+test_that("zstd_tar_compress()/zstd_tar_decompress() keep file mtimes", {
+  dir <- tempfile()
+  dir.create(file.path(dir, "subdir"), recursive = TRUE)
+  writeLines("hello", file.path(dir, "subdir", "a.txt"))
+  mtime <- as.POSIXct("2020-01-02 03:04:05", tz = "UTC")
+  Sys.setFileTime(file.path(dir, "subdir", "a.txt"), mtime)
+  on.exit(unlink(dir, recursive = TRUE))
+
+  archive <- tempfile(fileext = ".tar.zst")
+  exdir <- tempfile()
+  on.exit(unlink(c(archive, exdir), recursive = TRUE), add = TRUE)
+
+  zstd_tar_compress(dir, archive)
+  zstd_tar_decompress(archive, exdir)
+
+  out <- file.path(exdir, basename(dir), "subdir", "a.txt")
+  expect_equal(as.numeric(file.mtime(out)), as.numeric(mtime))
+})
+
 test_that("zstd_tar_compress() supports relative paths longer than 100 bytes", {
   dir <- tempfile()
   comp <- paste(rep("a", 60), collapse = "")

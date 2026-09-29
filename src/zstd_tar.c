@@ -41,15 +41,18 @@ static int zstd_utime(const char* path, struct _utimbuf* ut) {
 #define zstd_mkdir(path) mkdir(path, 0777)
 #endif
 
-/* Best-effort source file attributes to store in a tar entry: mode bits
- * and (outside Windows, which has no matching concept) uid/gid, so that
- * extracting the archive as the same user restores real ownership
- * instead of always recording uid/gid 0 (root). */
+/* Best-effort source file attributes to store in a tar entry: mode bits,
+ * modification time and (outside Windows, which has no matching concept)
+ * uid/gid, so that extracting the archive as the same user restores real
+ * ownership instead of always recording uid/gid 0 (root). Modification
+ * times before 1970 are stored as 0. */
 static void get_file_attrs(const char* path, unsigned* mode, unsigned* uid,
-                           unsigned* gid) {
+                           unsigned* gid, unsigned* mtime) {
 #ifdef _WIN32
   struct _stat st;
-  *mode = (zstd_stat(path, &st) == 0) ? (unsigned)(st.st_mode & 0777) : 0644;
+  int ok = zstd_stat(path, &st) == 0;
+  *mode = ok ? (unsigned)(st.st_mode & 0777) : 0644;
+  *mtime = (ok && st.st_mtime > 0) ? (unsigned)st.st_mtime : 0;
   *uid = 0;
   *gid = 0;
 #else
@@ -58,11 +61,13 @@ static void get_file_attrs(const char* path, unsigned* mode, unsigned* uid,
     *mode = (unsigned)(st.st_mode & 07777);
     *uid = (unsigned)st.st_uid;
     *gid = (unsigned)st.st_gid;
+    *mtime = st.st_mtime > 0 ? (unsigned)st.st_mtime : 0;
   } else {
     // # nocov start
     *mode = 0644;
     *uid = 0;
     *gid = 0;
+    *mtime = 0;
     // # nocov end
   }
 #endif
@@ -232,9 +237,9 @@ SEXP zstd_tar_compress_(SEXP files, SEXP names, SEXP isdir, SEXP output,
       } else {
         name_buf[nlen] = '\0';
       }
-      unsigned mode, uid, gid;
-      get_file_attrs(path, &mode, &uid, &gid);
-      int err = mtar_write_dir_header(&tar, name_buf, mode, uid, gid);
+      unsigned mode, uid, gid, mtime;
+      get_file_attrs(path, &mode, &uid, &gid, &mtime);
+      int err = mtar_write_dir_header(&tar, name_buf, mode, uid, gid, mtime);
       if (err) {
         ZSTD_freeCCtx(cctx);
         fclose(fout);
@@ -268,10 +273,10 @@ SEXP zstd_tar_compress_(SEXP files, SEXP names, SEXP isdir, SEXP output,
       // # nocov end
     }
 
-    unsigned mode, uid, gid;
-    get_file_attrs(path, &mode, &uid, &gid);
-    int err =
-        mtar_write_file_header(&tar, name, (unsigned)fsize, mode, uid, gid);
+    unsigned mode, uid, gid, mtime;
+    get_file_attrs(path, &mode, &uid, &gid, &mtime);
+    int err = mtar_write_file_header(&tar, name, (unsigned)fsize, mode, uid,
+                                     gid, mtime);
     if (err) {
       fclose(fin);
       ZSTD_freeCCtx(cctx);

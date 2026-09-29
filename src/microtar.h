@@ -90,9 +90,10 @@ int mtar_read_data(mtar_t* tar, void* ptr, unsigned size);
 
 int mtar_write_header(mtar_t* tar, const mtar_header_t* h);
 int mtar_write_file_header(mtar_t* tar, const char* name, unsigned size,
-                           unsigned mode, unsigned uid, unsigned gid);
+                           unsigned mode, unsigned uid, unsigned gid,
+                           unsigned mtime);
 int mtar_write_dir_header(mtar_t* tar, const char* name, unsigned mode,
-                          unsigned uid, unsigned gid);
+                          unsigned uid, unsigned gid, unsigned mtime);
 int mtar_write_data(mtar_t* tar, const void* data, unsigned size);
 int mtar_finalize(mtar_t* tar);
 
