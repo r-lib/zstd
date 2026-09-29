@@ -10,17 +10,23 @@ Authors@R: c(
            comment = "Zstandard copyright holder"),
     person("rxi", role = c("aut", "cph"), comment = "microtar author")
   )
-Description: Zstandard compression and decompression.
+Description: Compress and decompress data with the 'Zstandard'
+    algorithm <https://facebook.github.io/zstd/>, a fast lossless
+    compression format. Works on raw vectors in memory and on files, and
+    can create and extract 'zstd' compressed 'tar' archives. Supports
+    compression levels, multithreaded compression, long distance
+    matching, content checksums, and training dictionaries for better
+    compression of small, similar inputs.
 License: MIT + file LICENSE
 Copyright: This package includes code from the 'Zstandard' library
         owned by Meta Platforms, Inc. and affiliates. and created by
         Yann Collet, and code from the 'microtar' library created by
-        rxi.  See file 'inst/COPYRIGHTS' for details.
+        rxi. See file 'inst/COPYRIGHTS' for details.
 URL: https://github.com/r-lib/zstd
 BugReports: https://github.com/r-lib/zstd/issues
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-Suggests: 
+Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Config/roxygen2/version: 8.1.0
