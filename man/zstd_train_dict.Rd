@@ -7,7 +7,8 @@
 zstd_train_dict(samples, size = 112640L)
 }
 \arguments{
-\item{samples}{A list of raw vectors, representative of the data that
+\item{samples}{A list of raw vectors, or a character vector of file
+paths (each file is one sample), representative of the data that
 will be compressed with the dictionary.}
 
 \item{size}{Target dictionary size, in bytes. Defaults to 112640 (110KB),
