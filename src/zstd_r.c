@@ -42,48 +42,55 @@ void zstd_set_common_cparams(ZSTD_CCtx* cctx, SEXP window_log, SEXP checksum,
   if (window_log != R_NilValue) {
     ret = ZSTD_CCtx_setParameter(cctx, ZSTD_c_windowLog,
                                  Rf_asInteger(window_log));
-    if (ZSTD_isError(ret))
+    if (ZSTD_isError(ret)) {
       Rf_error("zstd error setting window_log: %s", ZSTD_getErrorName(ret));
+    }
   }
   if (checksum != R_NilValue) {
     ret = ZSTD_CCtx_setParameter(cctx, ZSTD_c_checksumFlag,
                                  Rf_asLogical(checksum) ? 1 : 0);
-    if (ZSTD_isError(ret))
+    if (ZSTD_isError(ret)) {
       Rf_error("zstd error setting checksum: %s",
                ZSTD_getErrorName(ret));  // # nocov
+    }
   }
   if (strategy != R_NilValue) {
     ret = ZSTD_CCtx_setParameter(cctx, ZSTD_c_strategy, Rf_asInteger(strategy));
-    if (ZSTD_isError(ret))
+    if (ZSTD_isError(ret)) {
       Rf_error("zstd error setting strategy: %s", ZSTD_getErrorName(ret));
+    }
   }
   if (nb_workers != R_NilValue) {
     ret = ZSTD_CCtx_setParameter(cctx, ZSTD_c_nbWorkers,
                                  Rf_asInteger(nb_workers));
-    if (ZSTD_isError(ret))
+    if (ZSTD_isError(ret)) {
       Rf_error("zstd error setting nb_workers: %s",
                ZSTD_getErrorName(ret));  // # nocov
+    }
   }
   if (content_size != R_NilValue) {
     ret = ZSTD_CCtx_setParameter(cctx, ZSTD_c_contentSizeFlag,
                                  Rf_asLogical(content_size) ? 1 : 0);
-    if (ZSTD_isError(ret))
+    if (ZSTD_isError(ret)) {
       Rf_error("zstd error setting content_size: %s",
                ZSTD_getErrorName(ret));  // # nocov
+    }
   }
   if (dict_id != R_NilValue) {
     ret = ZSTD_CCtx_setParameter(cctx, ZSTD_c_dictIDFlag,
                                  Rf_asLogical(dict_id) ? 1 : 0);
-    if (ZSTD_isError(ret))
+    if (ZSTD_isError(ret)) {
       Rf_error("zstd error setting dict_id: %s",
                ZSTD_getErrorName(ret));  // # nocov
+    }
   }
   if (ldm != R_NilValue) {
     ret = ZSTD_CCtx_setParameter(cctx, ZSTD_c_enableLongDistanceMatching,
                                  Rf_asLogical(ldm) ? 1 : 0);
-    if (ZSTD_isError(ret))
+    if (ZSTD_isError(ret)) {
       Rf_error("zstd error setting long_distance_matching: %s",
                ZSTD_getErrorName(ret));  // # nocov
+    }
   }
 }
 
@@ -105,8 +112,9 @@ SEXP zstd_mem_compress_(SEXP x, SEXP level, SEXP dict, SEXP window_log,
   SEXP out = PROTECT(Rf_allocVector(RAWSXP, (R_xlen_t)bound));
 
   ZSTD_CCtx* cctx = ZSTD_createCCtx();
-  if (cctx == NULL)
+  if (cctx == NULL) {
     Rf_error("cannot create zstd compression context");  // # nocov
+  }
   ZSTD_CCtx_setParameter(cctx, ZSTD_c_compressionLevel, lvl);
   zstd_set_common_cparams(cctx, window_log, checksum, strategy, nb_workers,
                           content_size, dict_id, ldm);
@@ -166,8 +174,9 @@ SEXP zstd_mem_decompress_(SEXP x, SEXP dict) {
     written = ZSTD_decompress(RAW(out), (size_t)contentSize, RAW(x), srcSize);
   } else {
     ZSTD_DCtx* dctx = ZSTD_createDCtx();
-    if (dctx == NULL)
+    if (dctx == NULL) {
       Rf_error("cannot create zstd decompression context");  // # nocov
+    }
     size_t dictSize = (size_t)XLENGTH(dict);
     written = ZSTD_decompress_usingDict(dctx, RAW(out), (size_t)contentSize,
                                         RAW(x), srcSize,
@@ -190,16 +199,18 @@ SEXP zstd_mem_decompress_(SEXP x, SEXP dict) {
 }
 
 SEXP zstd_train_dict_(SEXP samples, SEXP buffer_capacity) {
-  if (TYPEOF(samples) != VECSXP)
+  if (TYPEOF(samples) != VECSXP) {
     Rf_error("`samples` must be a list of raw vectors");  // # nocov
+  }
   R_xlen_t nbSamples = XLENGTH(samples);
   size_t capacity = (size_t)Rf_asReal(buffer_capacity);
 
   size_t totalSize = 0;
   for (R_xlen_t i = 0; i < nbSamples; i++) {
     SEXP el = VECTOR_ELT(samples, i);
-    if (TYPEOF(el) != RAWSXP)
+    if (TYPEOF(el) != RAWSXP) {
       Rf_error("`samples` must be a list of raw vectors");
+    }
     totalSize += (size_t)XLENGTH(el);
   }
 
