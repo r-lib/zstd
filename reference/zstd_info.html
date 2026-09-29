@@ -91,8 +91,8 @@ for skippable frames.</p></li>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">tmp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/readBin.html" class="external-link">writeBin</a></span><span class="op">(</span><span class="fu"><a href="zstd_mem_compress.html">zstd_mem_compress</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rawConversion.html" class="external-link">charToRaw</a></span><span class="op">(</span><span class="st">"hello world"</span><span class="op">)</span><span class="op">)</span>, <span class="va">tmp</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">zstd_info</span><span class="op">(</span><span class="va">tmp</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                               path  type compressed_size content_size</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 /tmp/Rtmpf7pQvz/file18d82a4f62a2 frame              20           11</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                              path  type compressed_size content_size</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 /tmp/RtmpXy0hg2/file19d090d595f frame              20           11</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   window_size dict_id checksum</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1          11       0    FALSE</span>
 </code></pre></div>

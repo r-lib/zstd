@@ -74,8 +74,10 @@
 
 <dt id="arg-level">level<a class="anchor" aria-label="anchor" href="#arg-level"></a></dt>
 <dd><p>Integer compression level. Defaults to
-<code><a href="zstd_clevel.html">zstd_default_clevel()</a></code>. Valid range is <code><a href="zstd_clevel.html">zstd_min_clevel()</a></code> to
-<code><a href="zstd_clevel.html">zstd_max_clevel()</a></code>.</p></dd>
+<code><a href="zstd_clevel.html">zstd_default_clevel()</a></code>, which is 3 on
+this system. Valid range is <code><a href="zstd_clevel.html">zstd_min_clevel()</a></code> to
+<code><a href="zstd_clevel.html">zstd_max_clevel()</a></code>, which is -131072 to
+22 on this system.</p></dd>
 
 
 <dt id="arg-dict">dict<a class="anchor" aria-label="anchor" href="#arg-dict"></a></dt>

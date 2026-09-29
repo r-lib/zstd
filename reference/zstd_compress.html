@@ -82,8 +82,10 @@ already exists.</p></dd>
 
 <dt id="arg-level">level<a class="anchor" aria-label="anchor" href="#arg-level"></a></dt>
 <dd><p>Integer compression level. Defaults to
-<code><a href="zstd_clevel.html">zstd_default_clevel()</a></code>. Valid range is <code><a href="zstd_clevel.html">zstd_min_clevel()</a></code> to
-<code><a href="zstd_clevel.html">zstd_max_clevel()</a></code>.</p></dd>
+<code><a href="zstd_clevel.html">zstd_default_clevel()</a></code>, which is 3 on
+this system. Valid range is <code><a href="zstd_clevel.html">zstd_min_clevel()</a></code> to
+<code><a href="zstd_clevel.html">zstd_max_clevel()</a></code>, which is -131072 to
+22 on this system.</p></dd>
 
 
 <dt id="arg-dict">dict<a class="anchor" aria-label="anchor" href="#arg-dict"></a></dt>
@@ -147,7 +149,10 @@ compression ratio of large inputs with repetition far apart.</p></dd>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/writeLines.html" class="external-link">writeLines</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="st">"hello world"</span>, <span class="fl">1000</span><span class="op">)</span>, collapse <span class="op">=</span> <span class="st">" "</span><span class="op">)</span>, <span class="va">src</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">zstd_compress</span><span class="op">(</span><span class="va">src</span>, <span class="va">dst</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="zstd_decompress.html">zstd_decompress</a></span><span class="op">(</span><span class="va">dst</span>, <span class="va">src2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readBin.html" class="external-link">readBin</a></span><span class="op">(</span><span class="va">src</span>, <span class="st">"raw"</span>, <span class="fu"><a href="https://rdrr.io/r/base/file.info.html" class="external-link">file.size</a></span><span class="op">(</span><span class="va">src</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/readBin.html" class="external-link">readBin</a></span><span class="op">(</span><span class="va">src2</span>, <span class="st">"raw"</span>, <span class="fu"><a href="https://rdrr.io/r/base/file.info.html" class="external-link">file.size</a></span><span class="op">(</span><span class="va">src2</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/readBin.html" class="external-link">readBin</a></span><span class="op">(</span><span class="va">src</span>, <span class="st">"raw"</span>, <span class="fu"><a href="https://rdrr.io/r/base/file.info.html" class="external-link">file.size</a></span><span class="op">(</span><span class="va">src</span><span class="op">)</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/readBin.html" class="external-link">readBin</a></span><span class="op">(</span><span class="va">src2</span>, <span class="st">"raw"</span>, <span class="fu"><a href="https://rdrr.io/r/base/file.info.html" class="external-link">file.size</a></span><span class="op">(</span><span class="va">src2</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
 </code></pre></div>
     </div>
