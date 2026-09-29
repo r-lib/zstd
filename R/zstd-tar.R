@@ -48,31 +48,12 @@ zstd_tar_compress <- function(
   dict_id = TRUE,
   long_distance_matching = NULL
 ) {
-  if (!is.character(files) || length(files) == 0 || anyNA(files)) {
-    stop("`files` must be a non-empty character vector", call. = FALSE)
-  }
-  if (!is.character(output) || length(output) != 1 || is.na(output)) {
-    stop("`output` must be a single string", call. = FALSE)
-  }
+  files <- as_files(files)
   info <- file.info(files)
-  missing <- files[is.na(info$isdir)]
-  if (length(missing) > 0) {
-    stop("File does not exist: ", missing[1], call. = FALSE)
-  }
-  if (!is.null(dict) && !is.raw(dict)) {
-    stop("`dict` must be a raw vector or NULL", call. = FALSE)
-  }
-  level <- as.integer(level)
-  if (level < zstd_min_clevel() || level > zstd_max_clevel()) {
-    stop(
-      "`level` must be between ",
-      zstd_min_clevel(),
-      " and ",
-      zstd_max_clevel(),
-      call. = FALSE
-    )
-  }
-  p <- zstd_check_common_cparams(
+  output <- as_string(output)
+  dict <- as_raw(dict, null = TRUE)
+  level <- as_clevel(level)
+  p <- as_common_cparams(
     window_log,
     checksum,
     strategy,
@@ -174,18 +155,9 @@ zstd_tar_compress <- function(
 #' zstd_tar_decompress(archive, exdir)
 #' readLines(file.path(exdir, basename(dir), "a.txt"))
 zstd_tar_decompress <- function(input, exdir = ".", dict = NULL) {
-  if (!is.character(input) || length(input) != 1 || is.na(input)) {
-    stop("`input` must be a single string", call. = FALSE)
-  }
-  if (!is.character(exdir) || length(exdir) != 1 || is.na(exdir)) {
-    stop("`exdir` must be a single string", call. = FALSE)
-  }
-  if (!file.exists(input)) {
-    stop("File does not exist: ", input, call. = FALSE)
-  }
-  if (!is.null(dict) && !is.raw(dict)) {
-    stop("`dict` must be a raw vector or NULL", call. = FALSE)
-  }
+  input <- as_existing_file(input)
+  exdir <- as_string(exdir)
+  dict <- as_raw(dict, null = TRUE)
   if (!dir.exists(exdir)) {
     dir.create(exdir, recursive = TRUE)
   }

@@ -49,23 +49,10 @@ zstd_mem_compress <- function(
   dict_id = TRUE,
   long_distance_matching = NULL
 ) {
-  if (!is.raw(x)) {
-    stop("`x` must be a raw vector", call. = FALSE)
-  }
-  if (!is.null(dict) && !is.raw(dict)) {
-    stop("`dict` must be a raw vector or NULL", call. = FALSE)
-  }
-  level <- as.integer(level)
-  if (level < zstd_min_clevel() || level > zstd_max_clevel()) {
-    stop(
-      "`level` must be between ",
-      zstd_min_clevel(),
-      " and ",
-      zstd_max_clevel(),
-      call. = FALSE
-    )
-  }
-  p <- zstd_check_common_cparams(
+  x <- as_raw(x)
+  dict <- as_raw(dict, null = TRUE)
+  level <- as_clevel(level)
+  p <- as_common_cparams(
     window_log,
     checksum,
     strategy,
@@ -104,11 +91,7 @@ zstd_mem_compress <- function(
 #' x <- charToRaw("hello world")
 #' zstd_mem_decompress(zstd_mem_compress(x))
 zstd_mem_decompress <- function(x, dict = NULL) {
-  if (!is.raw(x)) {
-    stop("`x` must be a raw vector", call. = FALSE)
-  }
-  if (!is.null(dict) && !is.raw(dict)) {
-    stop("`dict` must be a raw vector or NULL", call. = FALSE)
-  }
+  x <- as_raw(x)
+  dict <- as_raw(dict, null = TRUE)
   .Call(zstd_mem_decompress_, x, dict)
 }

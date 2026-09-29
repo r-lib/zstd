@@ -27,12 +27,10 @@
 #' writeBin(zstd_mem_compress(charToRaw("hello world")), tmp)
 #' zstd_info(tmp)
 zstd_info <- function(path) {
-  if (!is.character(path) || length(path) != 1 || is.na(path)) {
-    stop("`path` must be a single string", call. = FALSE)
-  }
+  path <- as_string(path)
   files <- Sys.glob(path)
   if (length(files) == 0) {
-    stop("No files match: ", path, call. = FALSE)
+    stop(cnd("No files match: '{path}'."))
   }
   info <- lapply(files, function(file) {
     df <- as.data.frame(.Call(zstd_info_, file), stringsAsFactors = FALSE)

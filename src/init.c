@@ -22,6 +22,8 @@ SEXP zstd_tar_compress_(SEXP files, SEXP names, SEXP isdir, SEXP output,
                         SEXP strategy, SEXP nb_workers, SEXP content_size,
                         SEXP dict_id, SEXP ldm);
 SEXP zstd_tar_decompress_(SEXP input, SEXP exdir, SEXP dict, SEXP tmp);
+SEXP glue_(SEXP x, SEXP f, SEXP open_arg, SEXP close_arg, SEXP cli_arg);
+SEXP trim_(SEXP x);
 
 static const R_CallMethodDef CallEntries[] = {
     {"zstd_mem_compress_", (DL_FUNC)&zstd_mem_compress_, 10},
@@ -35,6 +37,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"zstd_decompress_file_", (DL_FUNC)&zstd_decompress_file_, 3},
     {"zstd_tar_compress_", (DL_FUNC)&zstd_tar_compress_, 13},
     {"zstd_tar_decompress_", (DL_FUNC)&zstd_tar_decompress_, 4},
+    {"glue_", (DL_FUNC)&glue_, 5},
+    {"trim_", (DL_FUNC)&trim_, 1},
     {NULL, NULL, 0}};
 
 void R_init_zstd(DllInfo* dll) {

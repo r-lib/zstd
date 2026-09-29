@@ -35,29 +35,11 @@ zstd_compress <- function(
   dict_id = TRUE,
   long_distance_matching = NULL
 ) {
-  if (!is.character(input) || length(input) != 1 || is.na(input)) {
-    stop("`input` must be a single string", call. = FALSE)
-  }
-  if (!is.character(output) || length(output) != 1 || is.na(output)) {
-    stop("`output` must be a single string", call. = FALSE)
-  }
-  if (!file.exists(input)) {
-    stop("File does not exist: ", input, call. = FALSE)
-  }
-  if (!is.null(dict) && !is.raw(dict)) {
-    stop("`dict` must be a raw vector or NULL", call. = FALSE)
-  }
-  level <- as.integer(level)
-  if (level < zstd_min_clevel() || level > zstd_max_clevel()) {
-    stop(
-      "`level` must be between ",
-      zstd_min_clevel(),
-      " and ",
-      zstd_max_clevel(),
-      call. = FALSE
-    )
-  }
-  p <- zstd_check_common_cparams(
+  input <- as_existing_file(input)
+  output <- as_string(output)
+  dict <- as_raw(dict, null = TRUE)
+  level <- as_clevel(level)
+  p <- as_common_cparams(
     window_log,
     checksum,
     strategy,
@@ -105,18 +87,9 @@ zstd_compress <- function(
 #' zstd_decompress(dst, src2 <- tempfile())
 #' identical(readBin(src, "raw", file.size(src)), readBin(src2, "raw", file.size(src2)))
 zstd_decompress <- function(input, output, dict = NULL) {
-  if (!is.character(input) || length(input) != 1 || is.na(input)) {
-    stop("`input` must be a single string", call. = FALSE)
-  }
-  if (!is.character(output) || length(output) != 1 || is.na(output)) {
-    stop("`output` must be a single string", call. = FALSE)
-  }
-  if (!file.exists(input)) {
-    stop("File does not exist: ", input, call. = FALSE)
-  }
-  if (!is.null(dict) && !is.raw(dict)) {
-    stop("`dict` must be a raw vector or NULL", call. = FALSE)
-  }
+  input <- as_existing_file(input)
+  output <- as_string(output)
+  dict <- as_raw(dict, null = TRUE)
   .Call(zstd_decompress_file_, input, output, dict)
   invisible(output)
 }
