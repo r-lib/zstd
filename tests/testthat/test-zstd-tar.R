@@ -92,6 +92,7 @@ test_that("zstd_tar_compress() supports relative paths longer than 100 bytes", {
 test_that("zstd_tar_compress() errors cleanly on paths that can't fit ustar headers", {
   # A file name of 100+ bytes can't be split across the ustar 'prefix' and
   # 'name' fields. Keep the full path short enough for Windows' MAX_PATH.
+  skip_on_cran()
   dir <- tempfile()
   dir.create(dir)
   long <- paste(rep("a", 120), collapse = "")
