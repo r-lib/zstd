@@ -10,3 +10,4 @@
 ^\.clang-format$
 ^\.clang-format-ignore$
 ^Makefile$
+(^|/)\.claude$
