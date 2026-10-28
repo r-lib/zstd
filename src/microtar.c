@@ -225,7 +225,7 @@ static int header_to_raw(mtar_raw_header_t* rh, const mtar_header_t* h) {
   snprintf(rh->group, sizeof(rh->group), "%o", h->gid);
   snprintf(rh->size, sizeof(rh->size), "%o", h->size);
   snprintf(rh->mtime, sizeof(rh->mtime), "%o", h->mtime);
-  rh->type = h->type ? h->type : MTAR_TREG;
+  rh->type = (char)(h->type ? h->type : MTAR_TREG);
   memcpy(rh->magic, "ustar", 5);
   memcpy(rh->version, "00", 2);
 
@@ -273,12 +273,12 @@ const char* mtar_strerror(int err) {
 }
 
 static int file_write(mtar_t* tar, const void* data, unsigned size) {
-  unsigned res = fwrite(data, 1, size, tar->stream);
+  size_t res = fwrite(data, 1, size, tar->stream);
   return (res == size) ? MTAR_ESUCCESS : MTAR_EWRITEFAIL;
 }
 
 static int file_read(mtar_t* tar, void* data, unsigned size) {
-  unsigned res = fread(data, 1, size, tar->stream);
+  size_t res = fread(data, 1, size, tar->stream);
   return (res == size) ? MTAR_ESUCCESS : MTAR_EREADFAIL;
 }
 
