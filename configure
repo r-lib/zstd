@@ -1,0 +1,102 @@
+#!/bin/sh
+
+# Look for a system libzstd. If a suitable one is not found, use the
+# bundled copy in src/libzstd.
+#
+# Environment variables:
+# - ZSTD_BUNDLED=true: always use the bundled libzstd.
+# - ZSTD_CFLAGS, ZSTD_LIBS: compiler and linker flags for a system libzstd,
+#   these are used instead of pkg-config.
+
+: ${R_HOME=`R RHOME`}
+if test -z "${R_HOME}"; then
+  echo "could not determine R_HOME"
+  exit 1
+fi
+
+# libzstd 1.5.0 added ZSTD_defaultCLevel()
+MIN_VERSION=1.5.0
+MIN_VERSION_NUMBER=10500
+
+RBIN="${R_HOME}/bin/R"
+CC=`"${RBIN}" CMD config CC`
+CPPFLAGS=`"${RBIN}" CMD config CPPFLAGS`
+CFLAGS=`"${RBIN}" CMD config CFLAGS`
+LDFLAGS=`"${RBIN}" CMD config LDFLAGS`
+
+use_bundled() {
+  echo "** using bundled libzstd"
+  PKG_CPPFLAGS="-Ilibzstd"
+  PKG_LIBS="-lpthread"
+  PKG_OBJECTS="libzstd/zstd.o"
+}
+
+check_system() {
+  echo "** checking system libzstd with flags: $1 $2"
+  tmpdir=`mktemp -d 2>/dev/null || echo "${TMPDIR:-/tmp}/zstd-conf-$$"`
+  mkdir -p "$tmpdir"
+  cat > "$tmpdir/conftest.c" <<EOF
+#define ZSTD_STATIC_LINKING_ONLY
+#include <zstd.h>
+#include <zdict.h>
+#if ZSTD_VERSION_NUMBER < ${MIN_VERSION_NUMBER}
+#error libzstd is too old
+#endif
+int main(void) {
+  ZSTD_frameHeader fh;
+  (void) ZSTD_getFrameHeader(&fh, 0, 0);
+  (void) ZDICT_isError(0);
+  return ZSTD_defaultCLevel();
+}
+EOF
+  ${CC} ${CPPFLAGS} $1 ${CFLAGS} "$tmpdir/conftest.c" -o "$tmpdir/conftest" \
+    ${LDFLAGS} $2 >/dev/null 2>&1
+  status=$?
+  rm -rf "$tmpdir"
+  return $status
+}
+
+if test "${ZSTD_BUNDLED}" = "true"; then
+  use_bundled
+else
+  found=false
+  if test -n "${ZSTD_CFLAGS}${ZSTD_LIBS}"; then
+    cand_cflags="${ZSTD_CFLAGS}"
+    cand_libs="${ZSTD_LIBS:--lzstd}"
+    if check_system "$cand_cflags" "$cand_libs"; then found=true; fi
+  else
+    if pkg-config --version >/dev/null 2>&1 &&
+       pkg-config --atleast-version=${MIN_VERSION} libzstd 2>/dev/null; then
+      cand_cflags=`pkg-config --cflags libzstd`
+      cand_libs=`pkg-config --libs libzstd`
+      if check_system "$cand_cflags" "$cand_libs"; then
+        found=true
+      else
+        cand_libs=`pkg-config --libs --static libzstd`
+        if check_system "$cand_cflags" "$cand_libs"; then found=true; fi
+      fi
+    fi
+    if test "$found" = "false"; then
+      cand_cflags=""
+      cand_libs="-lzstd"
+      if check_system "$cand_cflags" "$cand_libs"; then found=true; fi
+    fi
+  fi
+
+  if test "$found" = "true"; then
+    echo "** using system libzstd"
+    PKG_CPPFLAGS="$cand_cflags"
+    PKG_LIBS="$cand_libs"
+    PKG_OBJECTS=""
+  else
+    echo "** no suitable system libzstd (>= ${MIN_VERSION}) found"
+    use_bundled
+  fi
+fi
+
+sed -e "s|@cppflags@|${PKG_CPPFLAGS}|" \
+    -e "s|@libs@|${PKG_LIBS}|" \
+    -e "s|@objects@|${PKG_OBJECTS}|" \
+    src/Makevars.in > src/Makevars
+
+exit 0

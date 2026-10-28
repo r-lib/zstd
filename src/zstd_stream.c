@@ -5,7 +5,8 @@
 #include <stdio.h>
 #include <string.h>
 #define ZSTD_STATIC_LINKING_ONLY
-#include "zstd.h"
+#include <zstd.h>
+
 #include "zstd_r.h"
 
 SEXP zstd_compress_file_(SEXP input, SEXP output, SEXP level, SEXP dict,

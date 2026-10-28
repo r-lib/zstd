@@ -11,3 +11,4 @@
 ^\.clang-format-ignore$
 ^Makefile$
 (^|/)\.claude$
+^src/Makevars$
