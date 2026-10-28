@@ -2,4 +2,4 @@ R/glue.R
 R/errors.R
 R/friendly-type.R
 src/glue.c
-src/zstd.c
+src/libzstd/zstd.c

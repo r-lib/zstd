@@ -1,5 +1,5 @@
-src/zstd.c
-src/zstd.h
-src/zstd_errors.h
-src/zdict.h
+src/libzstd/zstd.c
+src/libzstd/zstd.h
+src/libzstd/zstd_errors.h
+src/libzstd/zdict.h
 src/glue.c

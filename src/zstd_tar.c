@@ -6,8 +6,9 @@
 #include <stdlib.h>
 #include <string.h>
 #define ZSTD_STATIC_LINKING_ONLY
+#include <zstd.h>
+
 #include "microtar.h"
-#include "zstd.h"
 #include "zstd_r.h"
 
 #ifdef _WIN32

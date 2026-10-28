@@ -6,11 +6,11 @@
 #include <string.h>
 #include <stdbool.h>
 
-SEXP set(SEXP x, int i, SEXP val) {
+SEXP set(SEXP x, R_xlen_t i, SEXP val) {
   R_xlen_t len = Rf_xlength(x);
   if (i >= len) {
     len *= 2;
-    x = Rf_lengthgets(x, len);
+    x = Rf_xlengthgets(x, len);
   }
   SET_VECTOR_ELT(x, i, val);
   return x;
@@ -176,14 +176,14 @@ SEXP glue_(SEXP x, SEXP f, SEXP open_arg, SEXP close_arg, SEXP cli_arg) {
       if (delim_level == 0) {
         /* Result of the current glue statement */
         SEXP expr = PROTECT(Rf_ScalarString(
-            Rf_mkCharLenCE(&xx[start], (i - close_len) + 1 - start, CE_UTF8)));
+            Rf_mkCharLenCE(&xx[start], (int)((i - close_len) + 1 - start), CE_UTF8)));
         SEXP call = PROTECT(Rf_lang2(f, expr));
         SEXP result = PROTECT(Rf_eval(call, R_EmptyEnv));
 
         /* text in between last glue statement */
         if (j > 0) {
           str[j] = '\0';
-          SEXP str_ = PROTECT(Rf_ScalarString(Rf_mkCharLenCE(str, j, CE_UTF8)));
+          SEXP str_ = PROTECT(Rf_ScalarString(Rf_mkCharLenCE(str, (int)j, CE_UTF8)));
           REPROTECT(out = set(out, k++, str_), out_idx);
           UNPROTECT(1);
         }
@@ -203,7 +203,7 @@ SEXP glue_(SEXP x, SEXP f, SEXP open_arg, SEXP close_arg, SEXP cli_arg) {
 
   if (k == 0 || j > 0) {
     str[j] = '\0';
-    SEXP str_ = PROTECT(Rf_ScalarString(Rf_mkCharLenCE(str, j, CE_UTF8)));
+    SEXP str_ = PROTECT(Rf_ScalarString(Rf_mkCharLenCE(str, (int)j, CE_UTF8)));
     REPROTECT(out = set(out, k++, str_), out_idx);
     UNPROTECT(1);
   }

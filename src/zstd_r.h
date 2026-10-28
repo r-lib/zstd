@@ -4,7 +4,7 @@
 #include <Rinternals.h>
 #include <stdio.h>
 #define ZSTD_STATIC_LINKING_ONLY
-#include "zstd.h"
+#include <zstd.h>
 
 /* Opens `path_utf8` (interpreted as UTF-8, as returned by
  * Rf_translateCharUTF8()), using a wide-char path on Windows so non-ASCII

@@ -4,8 +4,9 @@
 #include <errno.h>
 #include <string.h>
 #define ZSTD_STATIC_LINKING_ONLY
-#include "zdict.h"
-#include "zstd.h"
+#include <zdict.h>
+#include <zstd.h>
+
 #include "zstd_r.h"
 
 #ifdef _WIN32
@@ -379,7 +380,7 @@ SEXP zstd_info_(SEXP path) {
 
   offset = 0;
   for (R_xlen_t i = 0; i < n; i++) {
-    ZSTD_FrameHeader fh;
+    ZSTD_frameHeader fh;
     size_t hret = ZSTD_getFrameHeader(&fh, src + offset, size - offset);
     if (ZSTD_isError(hret)) {
       // # nocov start

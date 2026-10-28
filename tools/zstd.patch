@@ -1,7 +1,7 @@
-diff --git a/src/zstd.c b/src/zstd.c
+diff --git a/src/libzstd/zstd.c b/src/libzstd/zstd.c
 index 1a4fb77..a88a35a 100644
---- a/src/zstd.c
-+++ b/src/zstd.c
+--- a/src/libzstd/zstd.c
++++ b/src/libzstd/zstd.c
 @@ -16,6 +16,7 @@
   * in the COPYING file in the root directory of this source tree).
   * You may select, at your option, one of the above-listed licenses.
@@ -97,10 +97,10 @@ index 1a4fb77..a88a35a 100644
              }                                                      \
          } while (0)
  
-diff --git a/src/zstd.h b/src/zstd.h
+diff --git a/src/libzstd/zstd.h b/src/libzstd/zstd.h
 index b8c0644..9d85b23 100644
---- a/src/zstd.h
-+++ b/src/zstd.h
+--- a/src/libzstd/zstd.h
++++ b/src/libzstd/zstd.h
 @@ -1874,12 +1874,12 @@ __attribute__((__unused__))
  #endif
  
