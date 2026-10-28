@@ -4,7 +4,7 @@
 \alias{zstd_tar_decompress}
 \title{Extract a Zstandard-compressed tar archive}
 \usage{
-zstd_tar_decompress(input, exdir, dict = NULL)
+zstd_tar_decompress(input, exdir = ".", dict = NULL)
 }
 \arguments{
 \item{input}{Path to a \code{.tar.zst} file, as created by
