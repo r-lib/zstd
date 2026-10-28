@@ -1,4 +1,4 @@
 PKG_CPPFLAGS = @cppflags@
 PKG_LIBS = @libs@
 
-OBJECTS = glue.o init.o microtar.o zstd_r.o zstd_stream.o zstd_tar.o @objects@
+OBJECTS = glue.o init.o microtar.o zstd_r.o zstd_stream.o zstd_tar.o zstd_version.o @objects@
