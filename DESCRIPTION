@@ -11,7 +11,7 @@ Authors@R: c(
     person("rxi", role = c("aut", "cph"), comment = "microtar author")
   )
 Description: Compress and decompress data with the 'Zstandard'
-    algorithm <https://facebook.github.io/zstd/>, a fast lossless
+    algorithm <https://meta.github.io/zstd/>, a fast lossless
     compression format. Works on raw vectors in memory and on files, and
     can create and extract 'zstd' compressed 'tar' archives. Supports
     compression levels, multithreaded compression, long distance
